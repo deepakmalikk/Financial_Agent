@@ -1,16 +1,16 @@
 from phi.agent import Agent
-from phi.model.groq import Groq
+from phi.model.ollama import Ollama
 from phi.tools.duckduckgo import DuckDuckGo
 from phi.tools.yfinance import YFinanceTools
-from dotenv import load_dotenv
-import os
+# from dotenv import load_dotenv
+# import os
 
-load_dotenv()
-api_key = os.getenv("GROQ_API_KEY")
+# load_dotenv()
+# api_key = os.getenv("DEEPSEEK_API_KEY")
 
 Web_search_agent = Agent(
     name = "Web_search_agent",
-    model = Groq(id="llama-3.1-70b-versatile"),
+    model=Ollama(id="llama3.1"),
     tools=[DuckDuckGo()], 
     instructions = ["This agent searches the web for information and also provide sorce."],
     show_tool_calls=True, 
@@ -19,7 +19,7 @@ Web_search_agent = Agent(
 
 finance_agent = Agent(
     name = "finance_agent",
-    model = Groq(id="llama-3.1-70b-versatile"),
+    model=Ollama(id="llama3.1"),
     tools=[YFinanceTools(stock_price=True, analyst_recommendations=True, stock_fundamentals=True)],
     show_tool_calls=True,
     description="You are an investment analyst that researches stock prices, analyst recommendations, and stock fundamentals.",
@@ -31,7 +31,7 @@ finance_agent = Agent(
 
 myagent = Agent(
     name="Financer Team",
-    model = Groq(id="llama-3.1-70b-versatile"),
+    model=Ollama(id="llama3.1"),
     team=[Web_search_agent, finance_agent],
     instructions=[
         "First, search finance news for what the user is asking about.",
@@ -44,4 +44,4 @@ myagent = Agent(
     description="This is a team of agents that can help you with your financial research."
 )
 
-myagent.print_response("Which stock i should buy for short term profit include dates")
+myagent.print_response("What is the stock price of tata moters?")
