@@ -44,4 +44,4 @@ myagent = Agent(
     description="This is a team of agents that can help you with your financial research."
 )
 
-myagent.print_response("Whih stock i should buy for short term profit include dates")
+myagent.print_response("Which stock i should buy for short term profit include dates")
