@@ -1,8 +1,9 @@
+import streamlit as st
 from phi.agent import Agent
 from phi.model.ollama import Ollama
 from phi.tools.duckduckgo import DuckDuckGo
 from phi.tools.yfinance import YFinanceTools
-import streamlit as st
+
 
 # Webpage configuration
 st.set_page_config(
