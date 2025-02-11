@@ -1,36 +1,31 @@
+import streamlit as st
 from phi.agent import Agent
 from phi.model.groq import Groq
 from phi.tools.duckduckgo import DuckDuckGo
 from phi.tools.yfinance import YFinanceTools
-import streamlit as st
-from dotenv import load_dotenv
-import os
 
-load_dotenv()
-os.getenv("GROQ_API_KEY")
+# Load API key from Streamlit secrets
+groq_api_key = st.secrets["GROQ_API_KEY"]
 
 # Webpage configuration
-st.set_page_config(
-    page_title="Financial Agent",  
-    page_icon="📈",  
-)
+st.set_page_config(page_title="Financial Agent", page_icon="📈")
 
 st.title("📈 Financial Agent")
 
 # Agent 1 - Web Search
 Web_search_agent = Agent(
     name="Web_search_agent",
-    model=Groq(id="llama-3.3-70b-versatile"),
-    tools=[DuckDuckGo()], 
+    model=Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key),
+    tools=[DuckDuckGo()],
     instructions=["This agent searches the web for information and also provides sources."],
-    show_tool_calls=True, 
+    show_tool_calls=True,
     markdown=True
 )
 
 # Agent 2 - Finance Analysis
 finance_agent = Agent(
     name="finance_agent",
-    model=Groq(id="llama-3.3-70b-versatile"),
+    model=Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key),
     tools=[YFinanceTools(stock_price=True, analyst_recommendations=True, stock_fundamentals=True)],
     show_tool_calls=True,
     description="You are an investment analyst that researches stock prices, analyst recommendations, and stock fundamentals.",
@@ -41,7 +36,7 @@ finance_agent = Agent(
 # Main Agent Team
 myagent = Agent(
     name="Financer Team",
-    model=Groq(id="llama-3.3-70b-versatile"),
+    model=Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key),
     team=[Web_search_agent, finance_agent],
     instructions=[
         "First, search finance news for what the user is asking about.",
@@ -58,7 +53,7 @@ myagent = Agent(
 query = st.text_input("Enter your Query:")
 
 if st.button("Get Financial Insights"):
-    if query.strip():  # Check if query is not empty
+    if query.strip():
         with st.spinner("⏳ Please wait, our AI agents are thinking..."):
             result = myagent.run(query)
         st.write(result.content)
