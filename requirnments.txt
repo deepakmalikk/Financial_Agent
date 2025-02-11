@@ -5,5 +5,5 @@ packaging
 duckduckgo-search
 fastapi
 uvicorn
-ollama
+groq
 streamlit
