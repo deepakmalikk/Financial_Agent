@@ -1,9 +1,13 @@
-import streamlit as st
 from phi.agent import Agent
-from phi.model.ollama import Ollama
+from phi.model.groq import Groq
 from phi.tools.duckduckgo import DuckDuckGo
 from phi.tools.yfinance import YFinanceTools
+import streamlit as st
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
+os.getenv("GROQ_API_KEY")
 
 # Webpage configuration
 st.set_page_config(
@@ -16,7 +20,7 @@ st.title("📈 Financial Agent")
 # Agent 1 - Web Search
 Web_search_agent = Agent(
     name="Web_search_agent",
-    model=Ollama(id="llama3.1"),
+    model=Groq(id="llama-3.3-70b-versatile"),
     tools=[DuckDuckGo()], 
     instructions=["This agent searches the web for information and also provides sources."],
     show_tool_calls=True, 
@@ -26,7 +30,7 @@ Web_search_agent = Agent(
 # Agent 2 - Finance Analysis
 finance_agent = Agent(
     name="finance_agent",
-    model=Ollama(id="llama3.1"),
+    model=Groq(id="llama-3.3-70b-versatile"),
     tools=[YFinanceTools(stock_price=True, analyst_recommendations=True, stock_fundamentals=True)],
     show_tool_calls=True,
     description="You are an investment analyst that researches stock prices, analyst recommendations, and stock fundamentals.",
@@ -37,7 +41,7 @@ finance_agent = Agent(
 # Main Agent Team
 myagent = Agent(
     name="Financer Team",
-    model=Ollama(id="llama3.1"),
+    model=Groq(id="llama-3.3-70b-versatile"),
     team=[Web_search_agent, finance_agent],
     instructions=[
         "First, search finance news for what the user is asking about.",
