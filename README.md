@@ -23,9 +23,9 @@ Instead of using a **single AI model**, this project follows a **multi-agent app
 ✅ **Parallel Processing** – Agents **work together** to provide well-rounded insights faster.  
 
 Example:  
-- 🔍 **Web_search_agent** → Searches the latest finance news.  
-- 📊 **Finance_agent** → Fetches stock data and fundamentals.  
-- 🏆 **Financer Team Agent** → Combines results and presents a final, **clear** answer.  
+- 🔍 **Web_Search_Agent** → Searches the latest finance news.  
+- 📊 **Finance_Analysis_Agent** → Fetches stock data and fundamentals.  
+- 🏆 **Finance_Team_Agent** → Combines results and presents a final, **clear** answer.  
 
 ---
 
