@@ -89,12 +89,20 @@ def run_app():
 
     # Sidebar with examples and instructions
     st.sidebar.header("💡 Query Examples")
+   # Sidebar with examples and instructions
     st.sidebar.markdown("""
     - **Tesla stock analysis**  
     - **Apple quarterly earnings**  
     - **Google recent financial news**  
-    - **Market trends for renewable energy**
+    - **Market trends for renewable energy**  
+    - **Cryptocurrency market trends**  
+    - **Federal Reserve interest rate impact**  
+    - **Oil and gas price movements**  
+    - **Microsoft stock performance**  
+    - **Global economic outlook 2025**  
+    - **Emerging markets analysis**
     """)
+
     st.sidebar.header("📝 How to Use")
     st.sidebar.markdown("""
     1. **Enter your query** in the text box on the main page.
