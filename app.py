@@ -70,7 +70,7 @@ def run_app():
     Enter a query below to get started!
     """)
 
-   st.sidebar.header("📝 How to Use")
+    st.sidebar.header("📝 How to Use")
     st.sidebar.markdown("""
     1. **Enter your query** in the text box on the main page.
     2. **Click** on **"Get Financial Insights"**.
