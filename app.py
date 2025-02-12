@@ -101,7 +101,7 @@ def run_app():
         if query.strip():
             with st.spinner("⏳ Please wait, our AI agents are thinking..."):
                 try:
-                    result = process_query(query, team_agent)
+                    result = safe_process_query(query, team_agent)
                     st.write(result.content)
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
