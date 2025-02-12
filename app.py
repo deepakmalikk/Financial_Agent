@@ -70,66 +70,31 @@ def run_app():
     Enter a query below to get started!
     """)
 
-    # Sidebar
-    with st.sidebar:
-        st.header("💡 Example Queries")
-        st.write("- Tesla stock analysis")
-        st.write("- Apple quarterly earnings")
-        st.write("- Market trends for renewable energy")
-        st.write("- Cryptocurrency market news")
-        st.write("- Microsoft stock fundamentals")
-        
-        st.header("📝 How to Use")
-        st.write("1️⃣ Enter your query in the text box.  "
-                 "2️⃣ Click on 'Get Financial Insights'. " 
-                " 3️⃣ Wait while our AI agents process your request.  "
-                 "4️⃣ Review the results (including data tables and sources).")
+   st.sidebar.header("📝 How to Use")
+    st.sidebar.markdown("""
+    1. **Enter your query** in the text box on the main page.
+    2. **Click** on **"Get Financial Insights"**.
+    3. **Wait** a few moments while our AI agents process your request.
+    4. **Review** the detailed results (including data tables and sources) that will appear below.
+    """)
 
-    # Create AI Agents
+    # Create the agent team using the provided API key
     _, _, team_agent = create_agents(groq_api_key)
 
-    # Layout for UI organization
-    col1, col2 = st.columns([3, 2])
+    # User Query Input with a placeholder
+    query = st.text_input("Enter your Query:", placeholder="E.g., 'Tesla stock analysis' or 'Latest earnings for Apple'")
 
-    # User Query Input
-    with col1:
-        query = st.text_input("🔍 Enter your Query:", placeholder="E.g., Tesla stock analysis")
-        if st.button("Get Financial Insights"):
-            if query.strip():
-                with st.spinner("⏳ Analyzing data, please wait..."):
-                    result = safe_process_query(query, team_agent)
-                    st.write(result.content if hasattr(result, "content") else result)
-            else:
-                st.warning("⚠️ Please enter a query before clicking the button.")
-
-    # Market Overview Section
-    with col2:
-        st.subheader("📊 Market Overview")
-        try:
-            finance_tools = YFinanceTools(stock_price=True)
-            stocks = ["AAPL", "TSLA", "AMZN", "GOOGL", "NVDA"]
-            stock_data = finance_tools.get_stock_price(stocks)
-            st.write(stock_data)
-        except Exception:
-            st.warning("⚠️ Unable to fetch stock market data. Please try again later.")
-
-    # Financial News Section
-    st.subheader("📰 Latest Financial News")
-    try:
-        news_agent = Agent(
-            name="news_agent",
-            model=Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key),
-            tools=[DuckDuckGo()],
-            instructions=["Fetch the latest financial news headlines."]
-        )
-        news_result = news_agent.run("Latest financial news headlines")
-        st.write(news_result.content)
-    except Exception:
-        st.warning("⚠️ Unable to fetch financial news. Please try again later.")
-
-    # Footer
-    st.markdown("---")
-    st.caption("🔹 Powered by AI - Phi3, DuckDuckGo, and YFinance Tools")
+    # When the user clicks the button, process the query
+    if st.button("Get Financial Insights"):
+        if query.strip():
+            with st.spinner("⏳ Please wait, our AI agents are thinking..."):
+                try:
+                    result = process_query(query, team_agent)
+                    st.write(result.content)
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
+        else:
+            st.warning("⚠️ Please enter a query before clicking the button.")
 
 if __name__ == "__main__":
     run_app()
