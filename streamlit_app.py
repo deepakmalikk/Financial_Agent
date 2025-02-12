@@ -9,16 +9,25 @@ from phi.tools.yfinance import YFinanceTools
 groq_api_key = st.secrets["GROQ_API_KEY"]
 
 # Webpage configuration
-st.set_page_config(page_title="Financial Agent", page_icon="📈")
+st.set_page_config(page_title="Financial Agent", page_icon="📈", layout="wide")
 
-st.title("📈 Financial Agent")
+st.title("📈 Financial Agent - AI-powered Investment Research")
+
+# Example Queries Section
+with st.sidebar:
+    st.header("💡 Example Queries")
+    st.write("- What are the latest trends in the stock market?")
+    st.write("- What is the current price of Tesla (TSLA)?")
+    st.write("- Can you analyze Apple Inc.'s (AAPL) financials?")
+    st.write("- What do analysts say about Amazon (AMZN)?")
+    st.write("- Show me a summary of today's financial news.")
 
 # Agent 1 - Web Search
 Web_search_agent = Agent(
     name="Web_search_agent",
     model=Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key),
     tools=[DuckDuckGo()],
-    instructions=["This agent searches the web for information and also provides sources."],
+    instructions=["This agent searches the web for financial news and market trends."],
     show_tool_calls=True,
     markdown=True
 )
@@ -41,22 +50,47 @@ myagent = Agent(
     team=[Web_search_agent, finance_agent],
     instructions=[
         "First, search finance news for what the user is asking about.",
-        "Then, based on stock analysis, provide the output to the user in a table.",
-        "Important: You must provide the source of the information that will be relevant and good to go.",
-        "Finally, provide a thoughtful and engaging summary in a table.",
+        "Then, based on stock analysis, provide the output in a structured table.",
+        "Include relevant sources in your response.",
+        "Provide a concise summary in a well-formatted table.",
     ],
     show_tool_calls=True,
     markdown=True,
-    description="This is a team of agents that can help you with your financial research."
+    description="A team of AI agents helping with financial research."
 )
 
-# Getting User Query
-query = st.text_input("Enter your Query:")
+# Layout for better UI organization
+col1, col2 = st.columns(2)
 
-if st.button("Get Financial Insights"):
-    if query.strip():
-        with st.spinner("⏳ Please wait, our AI agents are thinking..."):
-            result = myagent.run(query)
-        st.write(result.content)
-    else:
-        st.warning("⚠️ Please enter a query before clicking the button.")
+# User Query Input
+with col1:
+    query = st.text_input("Enter your Query:", placeholder="e.g. What is the latest news on Nvidia?")
+    if st.button("Get Financial Insights"):
+        if query.strip():
+            with st.spinner("⏳ Analyzing data, please wait..."):
+                result = myagent.run(query)
+            st.write(result.content)
+        else:
+            st.warning("⚠️ Please enter a query before clicking the button.")
+
+# Stock Market Summary (Example Data)
+with col2:
+    st.subheader("📊 Market Overview")
+    finance_tools = YFinanceTools(stock_price=True)
+    stocks = ["AAPL", "TSLA", "AMZN", "GOOGL", "NVDA"]
+    stock_data = finance_tools.get_stock_price(stocks)
+    st.write(stock_data)
+
+# Financial News Section
+st.subheader("📰 Latest Financial News")
+news_agent = Agent(
+    name="news_agent",
+    model=Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key),
+    tools=[DuckDuckGo()],
+    instructions=["Fetch the latest financial news headlines."]
+)
+news_result = news_agent.run("Latest financial news headlines")
+st.write(news_result.content)
+
+st.markdown("---")
+st.caption("Powered by AI - Phidata, DuckDuckGo, and YFinance Tools")
