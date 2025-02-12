@@ -59,20 +59,22 @@ Example:
 This diagram shows how the **Financial Agent** processes user queries using multiple AI agents.  
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[User] -->|Enters Query| B[Streamlit Web UI]
-    B -->|Sends Query| C[Financer Team Agent]
-    
-    subgraph TEAM[Financer Team Agent]
-      C -->|Delegates to| D[Web_search_agent]
-      C -->|Delegates to| E[finance_agent]
+    B -->|Sends Query| C[Main AI Coordinator]
+
+    subgraph TEAM[Main AI Coordinator]
+      C -->|Delegates to| D[Web Search Agent 🔍]
+      C -->|Delegates to| E[Finance Analysis Agent 📊]
     end
 
-    D -->|Returns Search Results| C
-    E -->|Returns Financial Data| C
-    C -->|Aggregates and Formats| F[Response Formatter]
-    F -->|Delivers Final Output| B
+    D -->|Finds Latest Financial News & Data| C
+    E -->|Analyzes Stock Trends & Insights| C
+
+    C -->|Combines Data & Generates Report| F[Response Processor 📝]
+    F -->|Sends Processed Insights to User| B
     B -->|Displays Results| A
+
 
 
 ```
