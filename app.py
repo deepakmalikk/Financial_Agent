@@ -4,6 +4,10 @@ from phi.agent import Agent
 from phi.model.groq import Groq
 from phi.tools.duckduckgo import DuckDuckGo
 from phi.tools.yfinance import YFinanceTools
+from dotenv import load_dotenv
+
+load_dotenv()
+groq_api_key= os.getenv("GROQ_API_KEY")
 
 def create_agents(api_key: str):
     """Create and return configured AI agents."""
