@@ -11,28 +11,41 @@ groq_api_key = st.secrets["GROQ_API_KEY"]
 # Webpage configuration
 st.set_page_config(page_title="Financial Agent", page_icon="📈", layout="wide")
 
-st.title("📈 Financial Agent - AI-powered Investment Research")
+# Main Title and Introduction
+st.title("📈 Financial Agent")
+st.markdown("""
+Welcome to the Financial Agent app!  
+This tool lets you receive financial insights by leveraging a team of AI agents.  
+Enter your query below to get started.
+""")
 
-# Example Queries Section
-with st.sidebar:
-    st.header("💡 Example Queries")
-    st.write("- What are the latest trends in the stock market?")
-    st.write("- What is the current price of Tesla (TSLA)?")
-    st.write("- Can you analyze Apple Inc.'s (AAPL) financials?")
-    st.write("- What do analysts say about Amazon (AMZN)?")
-    st.write("- Show me a summary of today's financial news.")
+# Sidebar with examples and instructions
+st.sidebar.header("💡 Query Examples")
+st.sidebar.markdown("""
+- **Tesla stock analysis**  
+- **Apple quarterly earnings**  
+- **Google recent financial news**  
+- **Market trends for renewable energy**
+""")
+st.sidebar.header("📝 How to Use")
+st.sidebar.markdown("""
+1. **Enter your query** in the text box on the main page.
+2. **Click** on **"Get Financial Insights"**.
+3. **Wait** a few moments while our AI agents process your request.
+4. **Review** the detailed results (including data tables and sources) that will appear below.
+""")
 
-# Agent 1 - Web Search
+# Define Agent 1 - Web Search
 Web_search_agent = Agent(
     name="Web_search_agent",
     model=Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key),
     tools=[DuckDuckGo()],
-    instructions=["This agent searches the web for financial news and market trends."],
+    instructions=["This agent searches the web for information and also provides sources."],
     show_tool_calls=True,
     markdown=True
 )
 
-# Agent 2 - Finance Analysis
+# Define Agent 2 - Finance Analysis
 finance_agent = Agent(
     name="finance_agent",
     model=Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key),
@@ -43,54 +56,30 @@ finance_agent = Agent(
     markdown=True
 )
 
-# Main Agent Team
+# Define the Main Agent Team that coordinates the other agents
 myagent = Agent(
     name="Financer Team",
     model=Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key),
     team=[Web_search_agent, finance_agent],
     instructions=[
         "First, search finance news for what the user is asking about.",
-        "Then, based on stock analysis, provide the output in a structured table.",
-        "Include relevant sources in your response.",
-        "Provide a concise summary in a well-formatted table.",
+        "Then, based on stock analysis, provide the output to the user in a table.",
+        "Important: You must provide the source of the information that will be relevant and good to go.",
+        "Finally, provide a thoughtful and engaging summary in a table.",
     ],
     show_tool_calls=True,
     markdown=True,
-    description="A team of AI agents helping with financial research."
+    description="This is a team of agents that can help you with your financial research."
 )
 
-# Layout for better UI organization
-col1, col2 = st.columns(2)
+# User Query Input with a placeholder
+query = st.text_input("Enter your Query:", placeholder="E.g., 'Tesla stock analysis' or 'Latest earnings for Apple'")
 
-# User Query Input
-with col1:
-    query = st.text_input("Enter your Query:", placeholder="e.g. What is the latest news on Nvidia?")
-    if st.button("Get Financial Insights"):
-        if query.strip():
-            with st.spinner("⏳ Analyzing data, please wait..."):
-                result = myagent.run(query)
-            st.write(result.content)
-        else:
-            st.warning("⚠️ Please enter a query before clicking the button.")
-
-# Stock Market Summary (Example Data)
-with col2:
-    st.subheader("📊 Market Overview")
-    finance_tools = YFinanceTools(stock_price=True)
-    stocks = ["AAPL", "TSLA", "AMZN", "GOOGL", "NVDA"]
-    stock_data = finance_tools.get_stock_price(stocks)
-    st.write(stock_data)
-
-# Financial News Section
-st.subheader("📰 Latest Financial News")
-news_agent = Agent(
-    name="news_agent",
-    model=Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key),
-    tools=[DuckDuckGo()],
-    instructions=["Fetch the latest financial news headlines."]
-)
-news_result = news_agent.run("Latest financial news headlines")
-st.write(news_result.content)
-
-st.markdown("---")
-st.caption("Powered by AI - Phidata, DuckDuckGo, and YFinance Tools")
+# When the user clicks the button, process the query
+if st.button("Get Financial Insights"):
+    if query.strip():
+        with st.spinner("⏳ Please wait, our AI agents are thinking..."):
+            result = myagent.run(query)
+        st.write(result.content)
+    else:
+        st.warning("⚠️ Please enter a query before clicking the button.")
