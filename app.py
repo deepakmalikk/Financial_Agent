@@ -54,21 +54,33 @@ def safe_process_query(query: str, agent: Agent):
         return agent.run(query)
     except Exception as e:
         return f"🚨 **Error:** Unable to process the query. Please try again later.\n\n🛠 **Details:** {str(e)}"
-
 def run_app():
-    """Run the Streamlit app."""
-    # Load API key from secrets
+    """
+    Run the Streamlit app.
+    """
+    # Load API key from Streamlit secrets
     groq_api_key = st.secrets["GROQ_API_KEY"]
 
     # Webpage configuration
-    st.set_page_config(page_title="Financial AI Agent", page_icon="📈", layout="wide")
+    st.set_page_config(page_title="Financial Agent", page_icon="📈", layout="wide")
 
-    # Title and Intro
-    st.title("📈 Financial AI Agent")
+    # Main Title and Introduction
+    st.title("📈 Financial Agent")
     st.markdown("""
-    **Your AI-powered assistant for stock market trends, financial insights, and investment research.**  
-    Enter a query below to get started!
+    Welcome to the Financial Agent app!  
+    This tool lets you receive financial insights by leveraging a team of AI agents.  
+    Enter your query below to get started.
     """)
+
+    # Sidebar with examples and instructions
+    st.sidebar.header("💡 Query Examples")
+    st.sidebar.markdown("""
+    - **Tesla stock analysis**  
+    - **Apple quarterly earnings**    
+    - **Cryptocurrency market news**   
+    - **Microsoft stock fundamentals**    
+                        """ 
+                        )
 
     st.sidebar.header("📝 How to Use")
     st.sidebar.markdown("""
