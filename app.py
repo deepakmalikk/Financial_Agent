@@ -80,10 +80,10 @@ def run_app():
         st.write("- Microsoft stock fundamentals")
         
         st.header("📝 How to Use")
-        st.write("1️⃣ Enter your query in the text box.  
-                  2️⃣ Click on 'Get Financial Insights'.  
-                  3️⃣ Wait while our AI agents process your request.  
-                  4️⃣ Review the results (including data tables and sources).")
+        st.write("1️⃣ Enter your query in the text box.  "
+                 "2️⃣ Click on 'Get Financial Insights'. " 
+                " 3️⃣ Wait while our AI agents process your request.  "
+                 "4️⃣ Review the results (including data tables and sources).")
 
     # Create AI Agents
     _, _, team_agent = create_agents(groq_api_key)
