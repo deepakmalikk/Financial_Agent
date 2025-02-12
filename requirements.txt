@@ -4,7 +4,5 @@ yfinance
 duckduckgo-search
 groq
 streamlit
-packaging
-fastapi
-uvicorn
+pytest
 
