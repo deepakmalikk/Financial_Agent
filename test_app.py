@@ -1,5 +1,5 @@
 import pytest
-from financial_agent import process_query, create_agents
+from app import process_query, create_agents
 from phi.agent import Agent
 
 # A simple dummy result class for testing
