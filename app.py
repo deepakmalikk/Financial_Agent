@@ -51,9 +51,11 @@ def process_query(query: str, agent: Agent):
     if not query.strip():
         raise ValueError("Empty query")
     try:
-        return agent.run(query)
+        result = agent.run(query)
+        return result  # ✅ Return the actual response object
     except Exception as e:
-        return f"🚨 **Error:** Unable to process the query. Please try again later.\n\n🛠 **Details:** {str(e)}"
+        return st.error(f"🚨 **Error:** Unable to process the query. Please try again later.\n\n🛠 **Details:** {str(e)}")  # ✅ Return an error message using Streamlit
+    
 def run_app():
     """
     Run the Streamlit app.
@@ -99,14 +101,16 @@ def run_app():
     # When the user clicks the button, process the query
     if st.button("Get Financial Insights"):
         if query.strip():
-            with st.spinner("⏳ Please wait, our AI agents are thinking..."):
-                try:
-                    result = process_query(query, team_agent)
-                    st.write(result.content)
-                except Exception as e:
-                    st.error(f"An error occurred: {e}")
+         with st.spinner("⏳ Please wait, our AI agents are thinking..."):
+            try:
+                result = process_query(query, team_agent)
+                if isinstance(result, str):  # ✅ Handle error messages properly
+                    st.error(result)
+                else:
+                    st.write(result.content)  # ✅ Avoid 'str' object error
+            except Exception as e:
+                st.error(f"An unexpected error occurred: {e}")
         else:
             st.warning("⚠️ Please enter a query before clicking the button.")
-
 if __name__ == "__main__":
     run_app()
