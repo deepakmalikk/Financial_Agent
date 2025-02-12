@@ -1,5 +1,4 @@
 import os
-os.system("pip install phidata")
 import streamlit as st
 from phi.agent import Agent
 from phi.model.groq import Groq
