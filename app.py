@@ -46,7 +46,7 @@ def create_agents(api_key: str):
 
     return web_search_agent, finance_agent, team_agent
 
-def safe_process_query(query: str, agent: Agent):
+def process_query(query: str, agent: Agent):
     """Handles user queries safely and prevents crashes."""
     if not query.strip():
         raise ValueError("Empty query")
@@ -101,7 +101,7 @@ def run_app():
         if query.strip():
             with st.spinner("⏳ Please wait, our AI agents are thinking..."):
                 try:
-                    result = safe_process_query(query, team_agent)
+                    result = process_query(query, team_agent)
                     st.write(result.content)
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
