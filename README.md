@@ -16,33 +16,30 @@ The **Financial Agent** is an AI-powered tool designed to assist users with fina
 
 ## ❓ Why Multi-Agent?  
 
-Instead of using a **single AI model**, this project follows a **multi-agent approach**. Here’s why:  
+Traditional financial research requires navigating **multiple sources**, which can be time-consuming. This project **automates financial insights** using an AI-driven multi-agent system:  
 
-✅ **Better Specialization** – Each agent focuses on a specific task (Web Search vs. Stock Analysis).  
-✅ **Improved Accuracy** – Instead of mixing tasks, each agent delivers **precise** results.  
-✅ **Parallel Processing** – Agents **work together** to provide well-rounded insights faster.  
+- ✅ **Automates Web Search** → Finds relevant financial news.  
+- ✅ **Performs Stock Analysis** → Retrieves real-time stock data and trends.  
+- ✅ **AI Coordination** → Combines insights into structured, easy-to-read reports.  
 
-Example:  
+ ### **Multi-Agent System Breakdown**  
+
 - 🔍 **Web_Search_Agent** → Searches the latest finance news.  
 - 📊 **Finance_Analysis_Agent** → Fetches stock data and fundamentals.  
 - 🏆 **Finance_Team_Agent** → Combines results and presents a final, **clear** answer.  
 
 ---
+### **Example Workflow**  
 
-## 🔄 How is this Different from Google Search or ChatGPT?  
+A user asks: _"What is the latest update on Tesla stock?"_  
 
-| Feature         | Google Search | ChatGPT | Financial Agent |
-|----------------|--------------|---------|----------------|
-| **Real-Time Data** | ✅ (But raw links) | ❌ (Static data) | ✅ (Live stock prices + news) |
-| **Stock Analysis** | ❌ | ❌ | ✅ |
-| **Multi-Agent AI** | ❌ | ❌ | ✅ |
-| **Formatted Insights** | ❌ | ✅ | ✅ (Structured & data-rich) |
-| **Cites Sources** | ❌ | ❌ | ✅ |
-
-💡 **Google Search** gives scattered results. **ChatGPT** cannot fetch live data.  
-✅ **Financial Agent combines both** – fetching the latest **news, stock prices, and financial insights** in a structured format.  
+🚀 **Financial Agent**:  
+1️⃣ **Fetches Tesla’s latest stock price & trends** 📈  
+2️⃣ **Searches for recent Tesla-related financial news** 🔍  
+3️⃣ **Summarizes insights with AI** 🏆  
 
 ---
+
 
 ## 🛠️ Technologies Used  
 
