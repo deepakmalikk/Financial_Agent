@@ -7,7 +7,7 @@ from phi.tools.yfinance import YFinanceTools
 from dotenv import load_dotenv
 
 load_dotenv()
-groq_api_key = os.getenv("GROQ_API_KEY")
+groq_api_key= os.getenv("GROQ_API_KEY")
 
 def create_agents(api_key: str):
     """Create and return configured AI agents."""
@@ -50,20 +50,16 @@ def create_agents(api_key: str):
 
     return web_search_agent, finance_agent, team_agent
 
-def stream_response(query: str, agent: Agent):
-    """Streams the agent's response in real time."""
+def process_query(query: str, agent: Agent):
+    """Handles user queries safely and prevents crashes."""
     if not query.strip():
         raise ValueError("Empty query")
-    
     try:
-        response_generator = agent.run(query, stream=True)
-        for chunk in response_generator:
-            # Convert chunk to string if it isn't already
-            if chunk is not None:
-                yield str(chunk)
+        result = agent.run(query)
+        return result  # ✅ Return the actual response object
     except Exception as e:
-        yield f"🚨 **Error:** Unable to process the query. \n\n🛠 **Details:** {str(e)}"
-
+        return st.error(f"🚨 **Error:** Unable to process the query. Please try again later.\n\n🛠 **Details:** {str(e)}")  # ✅ Return an error message using Streamlit
+    
 def run_app():
     """
     Run the Streamlit app.
@@ -109,19 +105,16 @@ def run_app():
     # When the user clicks the button, process the query
     if st.button("Get Financial Insights"):
         if query.strip():
-            st.write("⏳ **Fetching insights...**")
-            result_placeholder = st.empty()
-            
+         with st.spinner("⏳ Please wait, our AI agents are thinking..."):
             try:
-                response_text = ""
-                for chunk in stream_response(query, team_agent):
-                    if chunk:  # Only process non-empty chunks
-                        response_text += chunk
-                        result_placeholder.markdown(response_text)
+                result = process_query(query, team_agent)
+                if isinstance(result, str):  # ✅ Handle error messages properly
+                    st.error(result)
+                else:
+                    st.write(result.content)  # ✅ Avoid 'str' object error
             except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
+                st.error(f"An unexpected error occurred: {e}")
         else:
             st.warning("⚠️ Please enter a query before clicking the button.")
-
 if __name__ == "__main__":
     run_app()
