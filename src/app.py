@@ -7,7 +7,7 @@ from phi.tools.yfinance import YFinanceTools
 from dotenv import load_dotenv
 
 load_dotenv()
-groq_api_key= os.getenv("GROQ_API_KEY")
+groq_api_key = os.getenv("GROQ_API_KEY")
 
 def create_agents(api_key: str):
     """Create and return configured AI agents."""
@@ -50,18 +50,19 @@ def create_agents(api_key: str):
 
     return web_search_agent, finance_agent, team_agent
 
-
 def stream_response(query: str, agent: Agent):
     """Streams the agent's response in real time."""
     if not query.strip():
         raise ValueError("Empty query")
     
     try:
-        response_generator = agent.run(query, stream=True)  
+        response_generator = agent.run(query, stream=True)
         for chunk in response_generator:
-            yield chunk  # ⚡ Stream partial response
+            # Convert chunk to string if it isn't already
+            if chunk is not None:
+                yield str(chunk)
     except Exception as e:
-        yield f"🚨 **Error:** Unable to process the query. \n\n🛠 **Details:** {str(e)}"  
+        yield f"🚨 **Error:** Unable to process the query. \n\n🛠 **Details:** {str(e)}"
 
 def run_app():
     """
@@ -109,13 +110,16 @@ def run_app():
     if st.button("Get Financial Insights"):
         if query.strip():
             st.write("⏳ **Fetching insights...**")
-            result_placeholder = st.empty()  # 🔥 Placeholder for dynamic updates
-
-            response_text = ""
-            for chunk in stream_response(query, team_agent):
-                response_text += chunk  # Append new content
-                result_placeholder.markdown(response_text)  # ⚡ Live update
+            result_placeholder = st.empty()
             
+            try:
+                response_text = ""
+                for chunk in stream_response(query, team_agent):
+                    if chunk:  # Only process non-empty chunks
+                        response_text += chunk
+                        result_placeholder.markdown(response_text)
+            except Exception as e:
+                st.error(f"An error occurred: {str(e)}")
         else:
             st.warning("⚠️ Please enter a query before clicking the button.")
 
