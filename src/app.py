@@ -50,16 +50,19 @@ def create_agents(api_key: str):
 
     return web_search_agent, finance_agent, team_agent
 
-def process_query(query: str, agent: Agent):
-    """Handles user queries safely and prevents crashes."""
+
+def stream_response(query: str, agent: Agent):
+    """Streams the agent's response in real time."""
     if not query.strip():
         raise ValueError("Empty query")
-    try:
-        result = agent.run(query)
-        return result  # ✅ Return the actual response object
-    except Exception as e:
-        return st.error(f"🚨 **Error:** Unable to process the query. Please try again later.\n\n🛠 **Details:** {str(e)}")  # ✅ Return an error message using Streamlit
     
+    try:
+        response_generator = agent.run(query, stream=True)  
+        for chunk in response_generator:
+            yield chunk  # ⚡ Stream partial response
+    except Exception as e:
+        yield f"🚨 **Error:** Unable to process the query. \n\n🛠 **Details:** {str(e)}"  
+
 def run_app():
     """
     Run the Streamlit app.
@@ -105,16 +108,16 @@ def run_app():
     # When the user clicks the button, process the query
     if st.button("Get Financial Insights"):
         if query.strip():
-         with st.spinner("⏳ Please wait, our AI agents are thinking..."):
-            try:
-                result = process_query(query, team_agent)
-                if isinstance(result, str):  # ✅ Handle error messages properly
-                    st.error(result)
-                else:
-                    st.write(result.content)  # ✅ Avoid 'str' object error
-            except Exception as e:
-                st.error(f"An unexpected error occurred: {e}")
+            st.write("⏳ **Fetching insights...**")
+            result_placeholder = st.empty()  # 🔥 Placeholder for dynamic updates
+
+            response_text = ""
+            for chunk in stream_response(query, team_agent):
+                response_text += chunk  # Append new content
+                result_placeholder.markdown(response_text)  # ⚡ Live update
+            
         else:
             st.warning("⚠️ Please enter a query before clicking the button.")
+
 if __name__ == "__main__":
     run_app()
