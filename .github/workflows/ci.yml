@@ -1,4 +1,4 @@
-name: CI
+ name: CI
 
 on:
   push:
@@ -13,18 +13,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.11'
 
-      - name: List project files for debugging
+      - name: List project files (Debug)
         run: |
-          echo "Project directory structure:"
-          find . -maxdepth=2
+          echo "Listing project files recursively for debugging:"
+          ls -alR
 
       - name: Install dependencies
         run: |
@@ -37,10 +37,11 @@ jobs:
 
       - name: Run tests
         id: run_tests
-        run: |
-          pytest tests/ --maxfail=1 --disable-warnings -q
-        # Allow subsequent steps to run even if tests fail
         continue-on-error: true
+        run: |
+          echo "Running tests..."
+          # Capture the test output to a log file for later inspection if needed.
+          pytest tests/ --maxfail=1 --disable-warnings -q | tee test_output.log
 
       - name: Log error details if any issue occurs
         if: failure()
@@ -48,9 +49,12 @@ jobs:
           echo "⚠️ An error occurred during the CI run. Logging additional information..."
           echo "=== Environment Variables ==="
           printenv
-          echo "=== Directory Listing ==="
-          ls -al
-          echo "=== End of Log ==="
+          echo "=== Full Directory Listing ==="
+          ls -alR
+          echo "=== Installed Packages (pip freeze) ==="
+          pip freeze
+          echo "=== Test Output Log ==="
+          cat test_output.log || echo "No test output log available."
 
       - name: Fail build if tests failed
         if: failure()
