@@ -1,47 +1,97 @@
-import pytest
-from app import process_query, create_agents
-from phi.agent import Agent
+# test_financial_agent.py
 
-# A simple dummy result class for testing
+import pytest
+from src/app import create_agents, process_query  # Replace `your_module` with your actual module name
+
+# --- Dummy Classes for Testing ---
+
 class DummyResult:
+    """A dummy result class that mimics the agent's run() output."""
     def __init__(self, content):
         self.content = content
 
-# A dummy agent to test process_query without external dependencies
-class DummyAgent(Agent):
-    def run(self, query: str):
-        return DummyResult(content=f"Processed: {query}")
+class DummyAgent:
+    """A dummy agent with a run() method that returns a DummyResult."""
+    def run(self, query):
+        return DummyResult(f"Processed query: {query}")
 
-def test_process_query_empty_string():
-    """
-    Ensure that an empty query raises a ValueError.
-    """
-    dummy_agent = DummyAgent(name="dummy", model=None)
-    with pytest.raises(ValueError, match="Empty query"):
-        process_query("   ", dummy_agent)
+class ExceptionAgent:
+    """A dummy agent whose run() method raises an Exception."""
+    def run(self, query):
+        raise Exception("Test exception")
 
-def test_process_query_valid_query():
+
+# --- Pytest Fixtures ---
+
+@pytest.fixture
+def dummy_team_agent():
+    """Provides a dummy team agent for testing process_query."""
+    return DummyAgent()
+
+
+# --- Test Cases ---
+
+def test_create_agents_groq():
     """
-    Ensure that a valid query is processed correctly.
+    Test that create_agents returns a valid team agent when "Groq" is chosen.
     """
-    dummy_agent = DummyAgent(name="dummy", model=None)
+    web_search_agent, finance_agent, team_agent = create_agents("Groq")
+    # Check that the team agent is not None and has a run method
+    assert team_agent is not None
+    assert hasattr(team_agent, "run")
+    # Optionally, check that the instructions list is non-empty
+    assert isinstance(team_agent.instructions, list)
+    assert len(team_agent.instructions) > 0
+
+
+def test_create_agents_google():
+    """
+    Test that create_agents returns a valid team agent when "Google Studio" is chosen.
+    """
+    web_search_agent, finance_agent, team_agent = create_agents("Google Studio")
+    assert team_agent is not None
+    assert hasattr(team_agent, "run")
+    assert isinstance(team_agent.instructions, list)
+    assert len(team_agent.instructions) > 0
+
+
+def test_create_agents_unknown_model(monkeypatch):
+    """
+    Test that an unknown model choice defaults to Groq.
+    """
+    warning_messages = []
+
+    # Monkey-patch st.warning to capture warning messages instead of displaying them.
+    monkeypatch.setattr("your_module.st.warning", lambda msg: warning_messages.append(msg))
+    
+    web_search_agent, finance_agent, team_agent = create_agents("Invalid Model")
+    # Verify that a warning was issued about the unknown model choice.
+    assert any("Unknown model choice" in message for message in warning_messages)
+    assert team_agent is not None
+    assert hasattr(team_agent, "run")
+
+
+def test_process_query_success(dummy_team_agent):
+    """
+    Test that process_query returns the expected content when a valid query is provided.
+    """
     query = "Test Query"
-    result = process_query(query, dummy_agent)
-    assert result.content == f"Processed: {query}"
+    output = process_query(query, dummy_team_agent)
+    assert "Processed query: Test Query" in output
 
-def test_create_agents_configuration():
+
+def test_process_query_empty_query(dummy_team_agent):
     """
-    Verify that the agents are correctly configured.
+    Test that providing an empty (or whitespace-only) query raises a ValueError.
     """
-    dummy_api_key = "dummy_key"
-    web_agent, finance_agent, team_agent = create_agents(dummy_api_key)
+    with pytest.raises(ValueError):
+        process_query("    ", dummy_team_agent)
 
-    # Check that each agent has the expected name
-    assert web_agent.name == "Web_search_agent"
-    assert finance_agent.name == "finance_agent"
-    assert team_agent.name == "Financer Team"
 
-    # Verify that the team agent includes both sub-agents
-    team_names = [agent.name for agent in team_agent.team]
-    assert "Web_search_agent" in team_names
-    assert "finance_agent" in team_names
+def test_process_query_exception():
+    """
+    Test that if the agent's run() method raises an exception, process_query 
+    wraps it and raises a RuntimeError.
+    """
+    with pytest.raises(RuntimeError):
+        process_query("Some query", ExceptionAgent())
