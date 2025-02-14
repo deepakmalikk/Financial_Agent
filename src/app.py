@@ -122,7 +122,7 @@ def run_app():
     # Sidebar: Model selection and instructions
   
     st.header("Configuration")
-        model_choice = st.selectbox(
+    model_choice = st.selectbox(
             "AI Model Provider",
             [MODEL_GROQ, MODEL_GOOGLE],
             index=0,
