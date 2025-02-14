@@ -129,12 +129,7 @@ def run_app():
         help="Choose between Groq (speed) or Google (accuracy)"
         )
         
-    st.info("""
-        **Sample Queries:**
-        - Compare risk profiles of TSLA vs F
-        - Emerging markets fintech growth analysis
-        - Long-term outlook for renewable energy stocks
-        """)
+   
        
     st.sidebar.header("💡 Query Examples")
     st.sidebar.markdown("""
