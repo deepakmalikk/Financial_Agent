@@ -3,6 +3,8 @@ python-dotenv
 yfinance
 duckduckgo-search
 groq
+google
+google-generativeai
 streamlit
 pytest
 
