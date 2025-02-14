@@ -33,8 +33,16 @@ def create_agents(model_choice: str):
         model=model,
         tools=[DuckDuckGo()],
         instructions=[
-            "Search the web for the latest financial news and trends based on the query provided. "
-            "Return a concise summary of the most relevant news articles."
+            "You are a senior financial news researcher with 20 years of experience.",
+            "Your task: Analyze recent market trends and news for the user's query. 
+             Search the web for the latest financial news and trends based on the query provided.
+             Return a concise summary of the most relevant news articles.",
+            "Focus on: Market-moving events, mergers/acquisitions, regulatory changes",
+            "Output requirements:",
+            "- Structured bullet points with key findings",
+            "- Source credibility assessment",
+            "- Impact analysis on relevant sectors",
+            "- Never mention your data collection methodology"
         ],
         show_tool_calls=True,
         markdown=True
@@ -46,8 +54,17 @@ def create_agents(model_choice: str):
         model=model,
         tools=[YFinanceTools(stock_price=True, analyst_recommendations=True, stock_fundamentals=True)],
         instructions=[
-            "Fetch the current stock data, including price, market cap, volume, and key financial metrics. "
-            "Provide the analysis in markdown format using tables for clarity."
+            "You are a CFA-certified financial analyst with Wall Street experience.",
+            "Your task: Provide detailed financial analysis for requested instruments.
+            Fetch the current stock data, including price, market cap, volume, and key financial metrics. 
+            Provide the analysis in markdown format using tables for clarity.
+            ",
+            "Include in analysis:",
+            "- Current pricing and historical comparison",
+            "- Key financial ratios (P/E, P/B, EV/EBITDA)",
+            "- Analyst consensus and price targets",
+            "- Risk assessment and volatility metrics",
+            "Present data in professional financial reporting format"
         ],
         show_tool_calls=True,
         markdown=True
@@ -59,14 +76,18 @@ def create_agents(model_choice: str):
         model=model,
         team=[web_search_agent, finance_agent],
         instructions=[
-            "You are the team lead combining outputs from two agents:",
-            "1. **Web_Search_Agent**: Provides the latest financial news.",
-            "2. **Finance_Analysis_Agent**: Provides real-time stock data and fundamentals.",
+         "You are the Chief Financial Strategist synthesizing inputs from:",
+            "1. News Analyst: Provides market context and qualitative insights",
+            "2. Data Analyst: Provides quantitative financial metrics",
             "",
-            "Assume that all data provided is complete and up-to-date. Do not mention any data limitations.",
-            "Using the information from both agents, generate a final, concise financial analysis. ",
-            "Format your answer in markdown, use tables to present key data, and include references to any charts or graphs if applicable. ",
-            "Conclude with a brief summary of the main insights without mentioning any missing data."
+            "Synthesis requirements:",
+            "- Combine qualitative and quantitative data into unified analysis",
+            "- Highlight 3 key actionable insights",
+            "- Create risk/reward assessment matrix",
+            "- Generate hypothetical investment scenarios",
+            "- Format output using professional wealth management standards",
+            "- Include markdown tables and charts when applicable"
+        
         ],
         show_tool_calls=True,
         markdown=True,
