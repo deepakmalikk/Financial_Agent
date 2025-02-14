@@ -11,6 +11,7 @@ The **Financial Agent** is an AI-powered tool designed to assist users with fina
 - 📊 **Finance Analysis** – Provides stock price trends, analyst recommendations, and financial data.  
 - 🖥️ **User-Friendly Interface** – Built using **Streamlit** for an interactive experience.  
 - 📚 **Multi-Agent System** – Uses specialized AI agents for different tasks to improve accuracy.  
+- ⚠️ **Robust Error Handling** – Logs issues using Python’s `logging` module and provides user-friendly warnings.
 
 ---
 
@@ -47,7 +48,8 @@ A user asks: _"What is the latest update on Tesla stock?"_
 - **[DuckDuckGo API](https://duckduckgo.com/)** – Web search for finance news  
 - **[YFinanceTools](https://pypi.org/project/yfinance/)** – Stock market data  
 - **[Streamlit](https://streamlit.io/)** – Interactive UI  
-- **Python-dotenv** – Environment variable management  
+- **Python-dotenv** – Environment variable management
+- **Logging** – Built-in Python `logging` for error handling and debugging  
 
 ---
 
@@ -85,6 +87,7 @@ flowchart TD
 2. **Set Up Environment Variables**:
    ```bash
    GROQ_API_KEY=your_groq_api_key_here
+   GOOGLE_API_KEY=your_google_api_key_here
 
 3. **Install Dependencies**:
    ```bash
