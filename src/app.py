@@ -122,11 +122,11 @@ def run_app():
     # Sidebar: Model selection and instructions
   
     st.header("Configuration")
-    model_choice = st.selectbox(
-            "AI Model Provider",
-            [MODEL_GROQ, MODEL_GOOGLE],
-            index=0,
-            help="Choose between Groq (speed) or Google (accuracy)"
+    model_choice = st.sidebar.selectbox(
+        "Choose a model:",
+        ["Groq", "Google Studio"],
+        index=0
+        help="Choose between Groq (speed) or Google (accuracy)"
         )
         
     st.info("""
