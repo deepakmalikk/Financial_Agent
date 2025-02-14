@@ -34,9 +34,9 @@ def create_agents(model_choice: str):
         tools=[DuckDuckGo()],
         instructions=[
             "You are a senior financial news researcher with 20 years of experience.",
-            "Your task: Analyze recent market trends and news for the user's query. 
-             Search the web for the latest financial news and trends based on the query provided.
-             Return a concise summary of the most relevant news articles.",
+            "Your task: Analyze recent market trends and news for the user's query." 
+            "Search the web for the latest financial news and trends based on the query provided."
+            "Return a concise summary of the most relevant news articles.",
             "Focus on: Market-moving events, mergers/acquisitions, regulatory changes",
             "Output requirements:",
             "- Structured bullet points with key findings",
@@ -55,9 +55,9 @@ def create_agents(model_choice: str):
         tools=[YFinanceTools(stock_price=True, analyst_recommendations=True, stock_fundamentals=True)],
         instructions=[
             "You are a CFA-certified financial analyst with Wall Street experience.",
-            "Your task: Provide detailed financial analysis for requested instruments.
-            Fetch the current stock data, including price, market cap, volume, and key financial metrics. 
-            Provide the analysis in markdown format using tables for clarity.
+            "Your task: Provide detailed financial analysis for requested instruments."
+            "Fetch the current stock data, including price, market cap, volume, and key financial metrics." 
+            "Provide the analysis in markdown format using tables for clarity."
             ",
             "Include in analysis:",
             "- Current pricing and historical comparison",
