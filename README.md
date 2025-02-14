@@ -95,7 +95,7 @@ flowchart TD
 
 4. **Run the Application**:
    ```bash
-   streamlit run app.py
+   streamlit run src/app.py
 
 ## 🖥️ Usage
 - Open the app in your browser.
