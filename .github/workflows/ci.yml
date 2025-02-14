@@ -1,48 +1,51 @@
- name: CI
+name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   pull_request:
-    branches:
-      - main
+    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      # 1. Checkout the repository code
+      - name: Checkout
         uses: actions/checkout@v2
 
+      # 2. Set up Python 3.11
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: List project files (Debug)
+      # 3. (Optional) List project files for debugging
+      - name: List files
         run: |
-          echo "Listing project files recursively for debugging:"
+          echo "Project structure:"
           ls -alR
 
+      # 4. Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest
 
+      # 5. Set PYTHONPATH so tests can import modules from 'src'
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$(pwd)/src" >> $GITHUB_ENV
 
+      # 6. Run tests, capture output in case of failure
       - name: Run tests
         id: run_tests
         continue-on-error: true
         run: |
-          echo "Running tests..."
-          # Capture the test output to a log file for later inspection if needed.
           pytest tests/ --maxfail=1 --disable-warnings -q | tee test_output.log
 
+      # 7. Log additional information if something fails
       - name: Log error details if any issue occurs
         if: failure()
         run: |
@@ -56,6 +59,7 @@ jobs:
           echo "=== Test Output Log ==="
           cat test_output.log || echo "No test output log available."
 
+      # 8. Fail the build if tests have failed
       - name: Fail build if tests failed
         if: failure()
         run: exit 1
