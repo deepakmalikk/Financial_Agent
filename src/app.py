@@ -120,20 +120,22 @@ def run_app():
     """)
     
     # Sidebar: Model selection and instructions
-    st.header("Configuration")
-    model_choice = st.selectbox(
+   with st.sidebar:
+        st.header("Configuration")
+        model_choice = st.selectbox(
             "AI Model Provider",
             [MODEL_GROQ, MODEL_GOOGLE],
             index=0,
             help="Choose between Groq (speed) or Google (accuracy)"
         )
-    st.info("""
+        
+        st.info("""
         **Sample Queries:**
         - Compare risk profiles of TSLA vs F
         - Emerging markets fintech growth analysis
         - Long-term outlook for renewable energy stocks
         """)
-    
+       
     st.sidebar.header("💡 Query Examples")
     st.sidebar.markdown("""
     - **Tesla stock analysis**  
