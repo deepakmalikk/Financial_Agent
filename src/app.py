@@ -57,8 +57,7 @@ def create_agents(model_choice: str):
             "You are a CFA-certified financial analyst with Wall Street experience.",
             "Your task: Provide detailed financial analysis for requested instruments."
             "Fetch the current stock data, including price, market cap, volume, and key financial metrics." 
-            "Provide the analysis in markdown format using tables for clarity."
-            ",
+            "Provide the analysis in markdown format using tables for clarity.",
             "Include in analysis:",
             "- Current pricing and historical comparison",
             "- Key financial ratios (P/E, P/B, EV/EBITDA)",
