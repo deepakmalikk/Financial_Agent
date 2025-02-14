@@ -125,7 +125,7 @@ def run_app():
     model_choice = st.sidebar.selectbox(
         "Choose a model:",
         ["Groq", "Google Studio"],
-        index=0
+        index=0,
         help="Choose between Groq (speed) or Google (accuracy)"
         )
         
