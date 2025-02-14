@@ -120,8 +120,8 @@ def run_app():
     """)
     
     # Sidebar: Model selection and instructions
-   with st.sidebar:
-        st.header("Configuration")
+  
+    st.header("Configuration")
         model_choice = st.selectbox(
             "AI Model Provider",
             [MODEL_GROQ, MODEL_GOOGLE],
@@ -129,7 +129,7 @@ def run_app():
             help="Choose between Groq (speed) or Google (accuracy)"
         )
         
-        st.info("""
+    st.info("""
         **Sample Queries:**
         - Compare risk profiles of TSLA vs F
         - Emerging markets fintech growth analysis
