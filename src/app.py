@@ -1,206 +1,324 @@
 import os
 import streamlit as st
 import logging
+from datetime import datetime
+import pytz
+from typing import Tuple, Optional, Dict, Any
+from dataclasses import dataclass
+import time
+import requests.exceptions
 from phi.agent import Agent
 from phi.model.groq import Groq
-from phi.model.google import Gemini  # Using Google Studio's Gemini model
+from phi.model.google import Gemini
 from phi.tools.duckduckgo import DuckDuckGo
 from phi.tools.yfinance import YFinanceTools
 from dotenv import load_dotenv
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
-load_dotenv()  # Load environment variables from a .env file if available
+# Load environment variables
+load_dotenv()
 
-# Retrieve API keys (if needed)
+# Retrieve API keys
 GROQ_API_KEY = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY", "")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY", "")
 
-if not GROQ_API_KEY:
-    st.warning("Groq API key is missing. Please set it in your environment variables or Streamlit secrets.")
-if not GOOGLE_API_KEY:
-    st.warning("Google API key is missing. Please set it in your environment variables or Streamlit secrets.")
-
-
-def create_agents(model_choice: str):
-    """
-    Create and return the Web_Search_Agent, Finance_Analysis_Agent, 
-    and the multi-agent Finance_Team_Agent that combines their outputs.
-    """
-    try:
-        # Choose the model based on the user's selection
-        if model_choice == "Groq":
-            model = Groq(id="deepseek-r1-distill-llama-70b", api_key=GROQ_API_KEY)
-        elif model_choice == "Google Studio":
-            model = Gemini(id="gemini-1.5-flash")
-        else:
-            st.warning("Unknown model choice. Defaulting to Groq.")
-            model = Groq(id="deepseek-r1-distill-llama-70b", api_key=GROQ_API_KEY)
+class ServerStatus:
+    """Manages server status and error handling."""
     
-        # Create the Web_Search_Agent: Searches the latest finance news.
-        web_search_agent = Agent(
-            name="Web_Search_Agent",
-            model=model,
-            tools=[DuckDuckGo()],
-            instructions=[
-                "You are a senior financial news researcher with 20 years of experience.",
-                "Your task: Analyze recent market trends and news for the user's query. "
-                "Search the web for the latest financial news and trends based on the query provided. "
-                "Return a concise summary of the most relevant news articles.",
-                "Focus on: Market-moving events, mergers/acquisitions, regulatory changes",
-                "Output requirements:",
-                "- Structured bullet points with key findings",
-                "- Source credibility assessment",
-                "- Impact analysis on relevant sectors",
-                "- Never mention your data collection methodology"
-            ],
-            show_tool_calls=True,
-            markdown=True
-        )
+    MAX_RETRIES = 3
+    RETRY_DELAY = 2
     
-        # Create the Finance_Analysis_Agent: Fetches stock data and fundamentals.
-        finance_agent = Agent(
-            name="Finance_Analysis_Agent",
-            model=model,
-            tools=[YFinanceTools(stock_price=True, analyst_recommendations=True, stock_fundamentals=True)],
-            instructions=[
-                "You are a CFA-certified financial analyst with Wall Street experience.",
-                "Your task: Provide detailed financial analysis for requested instruments. "
-                "Fetch the current stock data, including price, market cap, volume, and key financial metrics. "
-                "Provide the analysis in markdown format using tables for clarity.",
-                "Include in analysis:",
-                "- Current pricing and historical comparison",
-                "- Key financial ratios (P/E, P/B, EV/EBITDA)",
-                "- Analyst consensus and price targets",
-                "- Risk assessment and volatility metrics",
-                "Present data in professional financial reporting format"
-            ],
-            show_tool_calls=True,
-            markdown=True
-        )
+    @staticmethod
+    def show_server_busy():
+        st.error("""
+        🔄 Our servers are currently experiencing high traffic.
+        
+        Please try again in a few moments. If the issue persists:
+        1. Wait 30 seconds and retry
+        2. Refresh your browser
+        3. Try a different query
+        
+        We apologize for any inconvenience.
+        """)
     
-        # Create the multi-agent Finance_Team_Agent which combines results and presents a final answer.
-        team_agent = Agent(
-            name="Finance_Team_Agent",
-            model=model,
-            team=[web_search_agent, finance_agent],
-            instructions=[
-                "You are the Chief Financial Strategist synthesizing inputs from:",
-                "1. News Analyst: Provides market context and qualitative insights",
-                "2. Data Analyst: Provides quantitative financial metrics",
-                "",
-                "Synthesis requirements:",
-                "- Combine qualitative and quantitative data into unified analysis",
-                "- Highlight 3 key actionable insights",
-                "- Create risk/reward assessment matrix",
-                "- Generate hypothetical investment scenarios",
-                "- Format output using professional wealth management standards",
-                "- Include markdown tables and charts when applicable"
-            ],
-            show_tool_calls=True,
-            markdown=True,
-            description="A multi-agent system that combines news and financial data to produce a complete final analysis."
-        )
+    @staticmethod
+    def show_api_error():
+        st.error("""
+        ⚠️ We're having trouble connecting to our data providers.
+        
+        This might be due to:
+        - Temporary API service disruption
+        - Network connectivity issues
+        - Service maintenance
+        
+        Please try again in a few minutes.
+        """)
     
-        return web_search_agent, finance_agent, team_agent
+    @staticmethod
+    def show_rate_limit():
+        st.warning("""
+        ⏳ You've reached the request limit.
+        
+        Please wait a moment before making another request.
+        This helps ensure fair usage of our services for all users.
+        """)
 
-    except Exception as e:
-        logger.error("Error while creating agents: %s", e, exc_info=True)
-        st.error("An error occurred while setting up the AI agents. Please try refreshing the page or contact support.")
-        return None, None, None
+def get_market_time() -> datetime:
+    """Get current market time in EST."""
+    est = pytz.timezone('US/Eastern')
+    return datetime.now(est)
 
+def get_market_session() -> str:
+    """Determine current market session based on time."""
+    current_time = get_market_time()
+    hour = current_time.hour
+    minute = current_time.minute
+    
+    if hour < 9 or (hour == 9 and minute < 30):
+        return "Pre-market"
+    elif hour < 16:
+        return "Regular Trading Hours"
+    else:
+        return "After-hours"
 
-def process_query(query: str, team_agent: Agent):
-    """
-    Process the query using the multi-agent Finance_Team_Agent.
-    The team agent automatically calls its sub-agents and combines their outputs to generate the final analysis.
-    """
+def create_model(model_choice: str) -> Any:
+    """Create and return the appropriate model based on user selection."""
+    if model_choice == "Groq":
+        return Groq(id="deepseek-r1-distill-llama-70b", api_key=GROQ_API_KEY)
+    elif model_choice == "Google Studio":
+        return Gemini(id="gemini-1.5-flash")
+    else:
+        st.warning("Unknown model choice. Defaulting to Groq.")
+        return Groq(id="deepseek-r1-distill-llama-70b", api_key=GROQ_API_KEY)
+
+def create_web_search_agent(model: Any) -> Agent:
+    """Create and return the Web Search Agent."""
+    current_time = get_market_time()
+    market_session = get_market_session()
+    
+    return Agent(
+        name="Web_Search_Agent",
+        model=model,
+        tools=[DuckDuckGo()],
+        instructions=[
+            "You are a senior financial news researcher with 20 years of experience.",
+            f"Current time (EST): {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}",
+            f"Current market session: {market_session}",
+            "Your task: Analyze CURRENT market trends and breaking news.",
+            "Requirements:",
+            "- Only include news from the current trading day",
+            "- Explicitly state the publication time of each news item",
+            "- Prioritize breaking news and market-moving events",
+            "- Verify news against multiple sources when possible",
+            "Output format:",
+            "- Lead with timestamp of most recent update",
+            "- Structured markdown with clear time context",
+            "- Include market session context",
+            "- Flag time-sensitive information clearly"
+        ],
+       
+        markdown=True
+    )
+
+def create_finance_agent(model: Any) -> Agent:
+    """Create and return the Finance Analysis Agent."""
+    current_time = get_market_time()
+    market_session = get_market_session()
+    
+    return Agent(
+        name="Finance_Analysis_Agent",
+        model=model,
+        tools=[YFinanceTools(
+            stock_price=True,
+            analyst_recommendations=True,
+            stock_fundamentals=True
+           
+        )],
+        instructions=[
+            "You are a CFA-certified financial analyst with Wall Street experience.",
+            f"Current time (EST): {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}",
+            f"Current market session: {market_session}",
+            "Real-time analysis requirements:",
+            "- Fetch and display current day's trading data",
+            "- Include pre/post market prices when available",
+            "- Show intraday price changes and volume",
+            "- Compare current metrics to previous close",
+            "Data presentation:",
+            "- Lead with real-time price and % change",
+            "- Use markdown tables with timestamp headers",
+            "- Include trading session indicator",
+            "- Flag any delayed data clearly"
+        ],
+        markdown=True
+    )
+def create_team_agent(model: Any, web_agent: Agent, finance_agent: Agent) -> Agent:
+    """Create and return the Team Agent."""
+    current_time = get_market_time()
+    market_session = get_market_session()
+    
+    return Agent(
+        name="Finance_Team_Agent",
+        model=model,
+        team=[web_agent, finance_agent],
+        instructions=[
+            "You are the Chief Financial Strategist providing real-time analysis.",
+            f"Current time (EST): {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}",
+            f"Current market session: {market_session}",
+            "Synthesis requirements:",
+            "1. Time Context:",
+            "   - Start with current market session status",
+            "   - Include timezone for all timestamps",
+            "   - Clearly separate historical and real-time data",
+            "2. Data Integration:",
+            "   - Merge news events with price movements",
+            "   - Highlight cause-effect relationships",
+            "   - Compare current trading to historical patterns",
+            "3. Output Structure:",
+            "   - Lead with executive summary of current situation",
+            "   - Use markdown tables for data presentation",
+            "   - Include time-stamped key events timeline",
+            "   - End with real-time action items or watchpoints"
+        ],
+       
+        markdown=True,
+        description="Real-time financial analysis system combining live news and market data."
+    )
+
+def process_query(query: str, team_agent: Agent) -> str:
+    """Process the query with enhanced error handling."""
     if not query.strip():
         raise ValueError("Empty query provided.")
 
-    try:
-        result = team_agent.run(query)
-        return result.content if hasattr(result, "content") else str(result)
-    except Exception as e:
-        logger.error("Error while processing query: %s", e, exc_info=True)
-        raise RuntimeError("Failed to process the query. Please try again later.") from e
-
-
-def run_app():
-    """
-    Run the Streamlit app.
-    """
-    st.set_page_config(page_title="Financial Agent", page_icon="📈", layout="wide")
+    retries = 0
+    while retries < ServerStatus.MAX_RETRIES:
+        try:
+            result = team_agent.run(query)
+            return result.content if hasattr(result, "content") else str(result)
+        
+        except requests.exceptions.ConnectionError:
+            logger.error("Connection error occurred")
+            ServerStatus.show_api_error()
+            break
+            
+        except requests.exceptions.Timeout:
+            logger.warning(f"Timeout occurred (attempt {retries + 1}/{ServerStatus.MAX_RETRIES})")
+            if retries < ServerStatus.MAX_RETRIES - 1:
+                time.sleep(ServerStatus.RETRY_DELAY)
+                retries += 1
+                continue
+            ServerStatus.show_server_busy()
+            break
+            
+        except requests.exceptions.RequestException as e:
+            if "rate limit" in str(e).lower():
+                logger.warning("Rate limit reached")
+                ServerStatus.show_rate_limit()
+                break
+            logger.error(f"Request error: {e}")
+            ServerStatus.show_server_busy()
+            break
+            
+        except Exception as e:
+            logger.error(f"Error while processing query: {e}", exc_info=True)
+            ServerStatus.show_server_busy()
+            break
     
+    return "Query processing failed. Please try again later."
+
+def setup_page():
+    """Set up the Streamlit page configuration."""
+    st.set_page_config(page_title="Financial Agent", page_icon="📈", layout="wide")
     st.title("📈 Financial Agent")
     st.markdown("""
     Welcome to the Financial Agent app!  
-    This tool provides financial insights by leveraging a team of AI agents.  
+    This tool provides real-time financial insights using AI agents.  
     Enter your query below to get started.
     """)
-    
-    # Sidebar: Model selection and instructions
-    st.header("Configuration")
+
+def setup_sidebar() -> str:
+    """Set up the sidebar and return the selected model."""
+    st.sidebar.header("⚙️ Configuration")
     model_choice = st.sidebar.selectbox(
         "Choose a model:",
         ["Groq", "Google Studio"],
         index=0,
         help="Choose between Groq (speed) or Google (accuracy)"
     )
-       
+    
     st.sidebar.header("💡 Query Examples")
     st.sidebar.markdown("""
-    - **Tesla stock analysis**  
-    - **Apple quarterly earnings**  
-    - **Cryptocurrency market news**  
-    - **Microsoft stock fundamentals**  
+    - **Tesla stock analysis and latest news**
+    - **Apple earnings and market reaction**
+    - **Crypto market current trends**
+    - **Microsoft real-time performance**
     """)
+    
     st.sidebar.header("📝 How to Use")
     st.sidebar.markdown("""
-    1. **Select a model** from the dropdown.
-    2. **Enter your query** in the text box below.
-    3. **Click** on **"Get Financial Insights"**.
-    4. **Wait** while our AI agents process your request.
-    5. **Review** the final analysis which includes tables and references to charts if applicable.
+    1. **Select a model** from the dropdown
+    2. **Enter your query** in the text box
+    3. **Click** "Get Financial Insights"
+    4. **Review** the real-time analysis
     """)
     
-    # Create the agents (the Finance_Team_Agent already contains the other two as its team)
-    _, _, team_agent = create_agents(model_choice)
-    
-    if team_agent is None:
-        st.error("Failed to initialize AI agents. Please check the logs or contact support.")
-        return
+    return model_choice
 
-    # User Query Input
-    query = st.text_input(
-        "Enter your Query:",
-        placeholder="E.g., 'Bitcoin and Ethereum analysis' or 'Latest earnings for Tesla'"
-    )
-    
-    if st.button("Get Financial Insights"):
-        if query.strip():
-            with st.spinner("⏳ Please wait, our AI agents are processing your query..."):
-                try:
-                    final_output = process_query(query, team_agent)
-                    st.markdown(final_output)
-                except ValueError as ve:
-                    logger.warning("Validation error: %s", ve)
-                    st.warning(str(ve))
-                except RuntimeError as re:
-                    logger.error("Runtime error: %s", re)
-                    st.error(str(re))
-                except Exception as e:
-                    logger.error("Unexpected error: %s", e, exc_info=True)
-                    st.error("An unexpected error occurred. Please try again later.")
-        else:
-            st.warning("⚠️ Please enter a query before clicking the button.")
+def main():
+    """Main application function."""
+    try:
+        # Check API keys
+        if not GROQ_API_KEY:
+            st.warning("⚠️ Groq API key is missing. Please set it in your environment variables or Streamlit secrets.")
+        if not GOOGLE_API_KEY:
+            st.warning("⚠️ Google API key is missing. Please set it in your environment variables or Streamlit secrets.")
+        
+        # Set up the page
+        setup_page()
+        
+        # Set up the sidebar and get model choice
+        model_choice = setup_sidebar()
+        
+        try:
+            # Create the model and agents
+            model = create_model(model_choice)
+            web_agent = create_web_search_agent(model)
+            finance_agent = create_finance_agent(model)
+            team_agent = create_team_agent(model, web_agent, finance_agent)
+        except Exception as e:
+            logger.error("Failed to initialize agents: %s", e)
+            ServerStatus.show_server_busy()
+            return
 
+        # Create the query input
+        query = st.text_input(
+            "Enter your Query:",
+            placeholder="E.g., 'Bitcoin current market analysis' or 'Tesla real-time performance'"
+        )
+
+        if st.button("Get Financial Insights"):
+            if query.strip():
+                with st.spinner("⏳ Analyzing market data..."):
+                    try:
+                        result = process_query(query, team_agent)
+                        if result:
+                            st.markdown(result)
+                        else:
+                            ServerStatus.show_server_busy()
+                    except Exception as e:
+                        logger.error(f"Error processing query: {e}")
+                        ServerStatus.show_server_busy()
+            else:
+                st.warning("⚠️ Please enter a query before clicking the button.")
+
+    except Exception as e:
+        logger.critical("Critical application error: %s", e, exc_info=True)
+        ServerStatus.show_server_busy()
 
 if __name__ == "__main__":
-    try:
-        run_app()
-    except Exception as main_e:
-        logger.critical("Critical error in main: %s", main_e, exc_info=True)
-        st.error("A critical error occurred. Please restart the application.")
+    main()
