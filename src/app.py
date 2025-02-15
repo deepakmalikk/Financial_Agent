@@ -98,7 +98,7 @@ def create_model(model_choice: str) -> Any:
         return Groq(id="deepseek-r1-distill-llama-70b", api_key=GROQ_API_KEY)
 
 def create_web_search_agent(model: Any) -> Agent:
-    """Create and return the Web Search Agent."""
+    """Create and return the Web Search Agent with hidden processing."""
     current_time = get_market_time()
     market_session = get_market_session()
     
@@ -117,17 +117,18 @@ def create_web_search_agent(model: Any) -> Agent:
             "- Prioritize breaking news and market-moving events",
             "- Verify news against multiple sources when possible",
             "Output format:",
-            "- Lead with timestamp of most recent update",
-            "- Structured markdown with clear time context",
-            "- Include market session context",
-            "- Flag time-sensitive information clearly"
+            "- Only provide the final analysis without mentioning data collection process",
+            "- Never mention being an AI or using tools",
+            "- Never explain your methodology",
+            "- Focus solely on market insights"
         ],
-       
-        markdown=True
+        show_tool_calls=False,  # Hide tool calls
+        markdown=True,
+        hide_prompt=True  # Hide prompt and thinking process
     )
 
 def create_finance_agent(model: Any) -> Agent:
-    """Create and return the Finance Analysis Agent."""
+    """Create and return the Finance Analysis Agent with hidden processing."""
     current_time = get_market_time()
     market_session = get_market_session()
     
@@ -138,27 +139,29 @@ def create_finance_agent(model: Any) -> Agent:
             stock_price=True,
             analyst_recommendations=True,
             stock_fundamentals=True
-           
         )],
         instructions=[
             "You are a CFA-certified financial analyst with Wall Street experience.",
             f"Current time (EST): {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}",
             f"Current market session: {market_session}",
             "Real-time analysis requirements:",
-            "- Fetch and display current day's trading data",
-            "- Include pre/post market prices when available",
-            "- Show intraday price changes and volume",
-            "- Compare current metrics to previous close",
+            "- Provide only the final analysis without mentioning data sources",
+            "- Never mention being an AI or using tools",
+            "- Focus solely on market data and insights",
+            "- Present data in clean, professional format",
             "Data presentation:",
-            "- Lead with real-time price and % change",
-            "- Use markdown tables with timestamp headers",
-            "- Include trading session indicator",
-            "- Flag any delayed data clearly"
+            "- Lead with key metrics",
+            "- Use concise markdown tables",
+            "- Include only relevant data points",
+            "- No explanations of methodology"
         ],
-        markdown=True
+        show_tool_calls=False,  # Hide tool calls
+        markdown=True,
+        hide_prompt=True  # Hide prompt and thinking process
     )
+
 def create_team_agent(model: Any, web_agent: Agent, finance_agent: Agent) -> Agent:
-    """Create and return the Team Agent."""
+    """Create and return the Team Agent with clean output."""
     current_time = get_market_time()
     market_session = get_market_session()
     
@@ -167,28 +170,62 @@ def create_team_agent(model: Any, web_agent: Agent, finance_agent: Agent) -> Age
         model=model,
         team=[web_agent, finance_agent],
         instructions=[
-            "You are the Chief Financial Strategist providing real-time analysis.",
             f"Current time (EST): {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}",
             f"Current market session: {market_session}",
-            "Synthesis requirements:",
-            "1. Time Context:",
-            "   - Start with current market session status",
-            "   - Include timezone for all timestamps",
-            "   - Clearly separate historical and real-time data",
-            "2. Data Integration:",
-            "   - Merge news events with price movements",
-            "   - Highlight cause-effect relationships",
-            "   - Compare current trading to historical patterns",
-            "3. Output Structure:",
-            "   - Lead with executive summary of current situation",
-            "   - Use markdown tables for data presentation",
-            "   - Include time-stamped key events timeline",
-            "   - End with real-time action items or watchpoints"
+            "Output Structure:",
+            "1. Start with timestamp and market session",
+            "2. Provide executive summary",
+            "3. Present key data in tables",
+            "4. List important events chronologically",
+            "5. End with actionable insights",
+            "Important rules:",
+            "- Never mention being an AI or using tools",
+            "- Never explain methodology or data sources",
+            "- Focus solely on financial insights",
+            "- Keep format professional and clean",
+            "- Avoid any meta-commentary about the analysis process"
         ],
-       
+        show_tool_calls=False,  # Hide tool calls
         markdown=True,
-        description="Real-time financial analysis system combining live news and market data."
+        hide_prompt=True,  # Hide prompt and thinking process
+        description="Financial analysis system"
     )
+
+def process_query(query: str, team_agent: Agent) -> str:
+    """Process the query with clean output handling."""
+    if not query.strip():
+        raise ValueError("Empty query provided.")
+
+    retries = 0
+    while retries < ServerStatus.MAX_RETRIES:
+        try:
+            result = team_agent.run(query)
+            # Clean the output to remove any tool call logs or thinking process
+            output = result.content if hasattr(result, "content") else str(result)
+            # Remove any meta-commentary or methodology explanations
+            return output
+            
+        except requests.exceptions.ConnectionError:
+            logger.error("Connection error occurred")
+            ServerStatus.show_api_error()
+            break
+            
+        except requests.exceptions.Timeout:
+            logger.warning(f"Timeout occurred (attempt {retries + 1}/{ServerStatus.MAX_RETRIES})")
+            if retries < ServerStatus.MAX_RETRIES - 1:
+                time.sleep(ServerStatus.RETRY_DELAY)
+                retries += 1
+                continue
+            ServerStatus.show_server_busy()
+            break
+            
+        except Exception as e:
+            logger.error(f"Error processing query: {e}", exc_info=True)
+            ServerStatus.show_server_busy()
+            break
+    
+    return "Query processing failed. Please try again later."
+
 
 def process_query(query: str, team_agent: Agent) -> str:
     """Process the query with enhanced error handling."""
