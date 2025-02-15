@@ -3,16 +3,29 @@ import streamlit as st
 import logging
 from datetime import datetime
 import pytz
-from typing import Tuple, Optional, Dict, Any
-from dataclasses import dataclass
 import time
 import requests.exceptions
 from phi.agent import Agent
 from phi.model.groq import Groq
-from phi.model.google import Gemini
+from phi.model.huggingface import HuggingFaceChat
 from phi.tools.duckduckgo import DuckDuckGo
 from phi.tools.yfinance import YFinanceTools
 from dotenv import load_dotenv
+
+# Monkey-patch HuggingFaceChat to fix the missing model_dump attribute issue
+original_create_assistant_message = HuggingFaceChat._create_assistant_message
+
+def patched_create_assistant_message(self, response_message):
+    assistant_message = original_create_assistant_message(self, response_message)
+    try:
+        # Try to use model_dump if available
+        assistant_message.tool_calls = [t.model_dump() for t in response_message.tool_calls]
+    except AttributeError:
+        # Fall back to using dict() if model_dump is not available
+        assistant_message.tool_calls = [t.dict() for t in response_message.tool_calls]
+    return assistant_message
+
+HuggingFaceChat._create_assistant_message = patched_create_assistant_message
 
 # Configure logging
 logging.basicConfig(
@@ -26,7 +39,7 @@ load_dotenv()
 
 # Retrieve API keys
 GROQ_API_KEY = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY", "")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY", "")
+HF_TOKEN = os.getenv("HF_TOKEN") or st.secrets.get("HF_TOKEN", "")
 
 class ServerStatus:
     """Manages server status and error handling."""
@@ -87,18 +100,22 @@ def get_market_session() -> str:
     else:
         return "After-hours"
 
-def create_model(model_choice: str) -> Any:
+def create_model(model_choice: str):
     """Create and return the appropriate model based on user selection."""
     if model_choice == "Groq":
         return Groq(id="deepseek-r1-distill-llama-70b", api_key=GROQ_API_KEY)
-    elif model_choice == "Google Studio":
-        return Gemini(id="gemini-1.5-flash")
+    elif model_choice == "Hugging Face":
+        # Updated model ID to one that supports chat completions (text-generation task)
+        return HuggingFaceChat(
+            id="meta-llama/Llama-2-7b-chat-hf",
+            max_tokens=4096,
+        )
     else:
         st.warning("Unknown model choice. Defaulting to Groq.")
         return Groq(id="deepseek-r1-distill-llama-70b", api_key=GROQ_API_KEY)
 
-def create_web_search_agent(model: Any) -> Agent:
-    """Create and return the Web Search Agent with hidden processing."""
+def create_web_search_agent(model) -> Agent:
+    """Create and return the Web Search Agent for news analysis."""
     current_time = get_market_time()
     market_session = get_market_session()
     
@@ -107,28 +124,25 @@ def create_web_search_agent(model: Any) -> Agent:
         model=model,
         tools=[DuckDuckGo()],
         instructions=[
-            "You are a senior financial news researcher with 20 years of experience.",
+            "You are a seasoned financial news researcher with over 20 years of experience.",
             f"Current time (EST): {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}",
             f"Current market session: {market_session}",
-            "Your task: Analyze CURRENT market trends and breaking news.",
+            "Task: Provide a detailed report on current market trends and breaking financial news.",
             "Requirements:",
-            "- Only include news from the current trading day",
-            "- Explicitly state the publication time of each news item",
-            "- Prioritize breaking news and market-moving events",
-            "- Verify news against multiple sources when possible",
+            "- Include only news published on the current trading day.",
+            "- For each news item, provide the headline, publication time, source, and a brief summary.",
+            "- Prioritize market-moving events and verify news across multiple sources.",
             "Output format:",
-            "- Only provide the final analysis without mentioning data collection process",
-            "- Never mention being an AI or using tools",
-            "- Never explain your methodology",
-            "- Focus solely on market insights"
+            "- Present the news items as a markdown-formatted list.",
+            "- Do not include placeholders; provide actual data if available."
         ],
         show_tool_calls=False,  # Hide tool calls
         markdown=True,
         hide_prompt=True  # Hide prompt and thinking process
     )
 
-def create_finance_agent(model: Any) -> Agent:
-    """Create and return the Finance Analysis Agent with hidden processing."""
+def create_finance_agent(model) -> Agent:
+    """Create and return the Finance Analysis Agent for financial data."""
     current_time = get_market_time()
     market_session = get_market_session()
     
@@ -138,30 +152,31 @@ def create_finance_agent(model: Any) -> Agent:
         tools=[YFinanceTools(
             stock_price=True,
             analyst_recommendations=True,
-            stock_fundamentals=True
+            stock_fundamentals=True,
+            company_info=True, 
+            company_news=True
         )],
         instructions=[
-            "You are a CFA-certified financial analyst with Wall Street experience.",
+            "You are a CFA-certified financial analyst with extensive Wall Street experience.",
             f"Current time (EST): {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}",
             f"Current market session: {market_session}",
-            "Real-time analysis requirements:",
-            "- Provide only the final analysis without mentioning data sources",
-            "- Never mention being an AI or using tools",
-            "- Focus solely on market data and insights",
-            "- Present data in clean, professional format",
-            "Data presentation:",
-            "- Lead with key metrics",
-            "- Use concise markdown tables",
-            "- Include only relevant data points",
-            "- No explanations of methodology"
+            "Task: Provide a detailed real-time financial analysis for the given query.",
+            "Requirements:",
+            "- Include key financial metrics such as current stock price, market capitalization, P/E ratio, and analyst ratings.",
+            "- Present data in a clear and professional markdown table format.",
+            "- Accompany the table with a concise commentary summarizing the financial data.",
+            "Output format:",
+            "- A markdown table with key financial metrics.",
+            "- A brief, actionable commentary based solely on the data provided.",
+            "- Do not include any placeholder text; provide actual data."
         ],
         show_tool_calls=False,  # Hide tool calls
         markdown=True,
         hide_prompt=True  # Hide prompt and thinking process
     )
 
-def create_team_agent(model: Any, web_agent: Agent, finance_agent: Agent) -> Agent:
-    """Create and return the Team Agent with clean output."""
+def create_team_agent(model, web_agent: Agent, finance_agent: Agent) -> Agent:
+    """Create and return the Team Agent that combines insights from both sub-agents."""
     current_time = get_market_time()
     market_session = get_market_session()
     
@@ -172,60 +187,23 @@ def create_team_agent(model: Any, web_agent: Agent, finance_agent: Agent) -> Age
         instructions=[
             f"Current time (EST): {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}",
             f"Current market session: {market_session}",
+            "Task: Combine the financial analysis and market news into a comprehensive report.",
             "Output Structure:",
-            "1. Start with timestamp and market session",
-            "2. Provide executive summary",
-            "3. Present key data in tables",
-            "4. List important events chronologically",
-            "5. End with actionable insights",
-            "Important rules:",
-            "- Never mention being an AI or using tools",
-            "- Never explain methodology or data sources",
-            "- Focus solely on financial insights",
-            "- Keep format professional and clean",
-            "- Avoid any meta-commentary about the analysis process"
+            "1. Start with a timestamp and current market session.",
+            "2. Provide an executive summary of the market situation.",
+            "3. Present a markdown table of key financial metrics.",
+            "4. List significant financial news items in chronological order with publication times and sources.",
+            "5. End with actionable insights based on the combined data.",
+            "Rules:",
+            "- Do not mention being an AI or the use of external tools.",
+            "- Do not explain your methodology or data sources.",
+            "- Ensure that every section contains actual, data-driven content."
         ],
         show_tool_calls=False,  # Hide tool calls
         markdown=True,
         hide_prompt=True,  # Hide prompt and thinking process
         description="Financial analysis system"
     )
-
-def process_query(query: str, team_agent: Agent) -> str:
-    """Process the query with clean output handling."""
-    if not query.strip():
-        raise ValueError("Empty query provided.")
-
-    retries = 0
-    while retries < ServerStatus.MAX_RETRIES:
-        try:
-            result = team_agent.run(query)
-            # Clean the output to remove any tool call logs or thinking process
-            output = result.content if hasattr(result, "content") else str(result)
-            # Remove any meta-commentary or methodology explanations
-            return output
-            
-        except requests.exceptions.ConnectionError:
-            logger.error("Connection error occurred")
-            ServerStatus.show_api_error()
-            break
-            
-        except requests.exceptions.Timeout:
-            logger.warning(f"Timeout occurred (attempt {retries + 1}/{ServerStatus.MAX_RETRIES})")
-            if retries < ServerStatus.MAX_RETRIES - 1:
-                time.sleep(ServerStatus.RETRY_DELAY)
-                retries += 1
-                continue
-            ServerStatus.show_server_busy()
-            break
-            
-        except Exception as e:
-            logger.error(f"Error processing query: {e}", exc_info=True)
-            ServerStatus.show_server_busy()
-            break
-    
-    return "Query processing failed. Please try again later."
-
 
 def process_query(query: str, team_agent: Agent) -> str:
     """Process the query with enhanced error handling."""
@@ -283,9 +261,9 @@ def setup_sidebar() -> str:
     st.sidebar.header("⚙️ Configuration")
     model_choice = st.sidebar.selectbox(
         "Choose a model:",
-        ["Groq", "Google Studio"],
+        ["Groq", "Hugging Face"],
         index=0,
-        help="Choose between Groq (speed) or Google (accuracy)"
+        help="Choose between Groq or Hugging Face"
     )
     
     st.sidebar.header("💡 Query Examples")
@@ -312,8 +290,8 @@ def main():
         # Check API keys
         if not GROQ_API_KEY:
             st.warning("⚠️ Groq API key is missing. Please set it in your environment variables or Streamlit secrets.")
-        if not GOOGLE_API_KEY:
-            st.warning("⚠️ Google API key is missing. Please set it in your environment variables or Streamlit secrets.")
+        if not HF_TOKEN:
+            st.warning("⚠️ Hugging Face API key is missing. Please set it in your environment variables or Streamlit secrets.")
         
         # Set up the page
         setup_page()
