@@ -1,7 +1,5 @@
-phidata
+agno
 python-dotenv
-yfinance
-duckduckgo-search
 groq
 streamlit
 pytest
