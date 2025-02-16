@@ -78,33 +78,22 @@ def create_web_search_agent(model) -> Agent:
             </agent_profile>
 
             <task>
-                Use DuckDuckGo to search for the latest financial news related to the user's query.
-                Focus on news from reputable financial sources (e.g., Reuters, Bloomberg, Wall Street Journal).
-                Prioritize news articles published within the last 24 hours. The goal is to analyze the news, not just report the most recent date.
+                Use DuckDuckGo to search for the ABSOLUTE LATEST financial news related to the user's query.
+                Focus ONLY on news from the CURRENT DATE.
+                Focus on reputable financial sources (e.g., Reuters, Bloomberg, Wall Street Journal).
+                The goal is to analyze the news, not just report anything from the past.
             </task>
 
             <search_parameters>
                 <timeframe>
                     <recent_priority>Last 24 hours</recent_priority>
-                    <historical_context>Up to 7 days when relevant</historical_context>
                 </timeframe>
                 <sources>
                     <primary>Financial news websites, market reports</primary>
                     <secondary>Company announcements, regulatory filings</secondary>
-                    <excluded>Social media speculation, unofficial sources</excluded>
+                    <excluded>Speculation or rumors, old news</excluded>
                 </sources>
             </search_parameters>
-
-            <data_processing>
-                <verification>
-                    <source_check>Multiple reliable sources required</source_check>
-                </verification>
-                <prioritization>
-                    <high>Market-moving events, earnings reports</high>
-                    <medium>Industry trends, sector analysis</medium>
-                    <low>General market commentary</low>
-                </prioritization>
-            </data_processing>
 
             <output_structure>
                 <format>
@@ -116,6 +105,7 @@ def create_web_search_agent(model) -> Agent:
                     <item>Speculation or rumors</item>
                     <item>Non-financial news</item>
                     <item>AI/model self-references</item>
+                    <item>Data from prior dates.</item>
                 </excluded_content>
             </output_structure>
 
@@ -123,7 +113,7 @@ def create_web_search_agent(model) -> Agent:
                 User Query: "Recent news about AAPL stock"
                 Expected Output:
                 - Headline: "Apple Announces New Product Line" (Source: Reuters)
-                  Timestamp: 2024-05-03 10:00 ET
+                  Timestamp: CURRENT DATE 10:00 ET
                   Impact Analysis: Positive impact on AAPL stock due to anticipated increase in revenue.
             </example>
             """
@@ -137,21 +127,22 @@ def create_finance_agent(model) -> Agent:
     current_date = datetime.now().strftime("%Y-%m-%d")
     return Agent(
         name="Finance_Analysis_Agent",
-        role="Quantitative Market Analyst. Focuses on ANALYZING data and trends, not just reporting the latest data point.",
+        role="Quantitative Market Analyst. Focuses on ANALYZING data and trends, and ONLY using CURRENT data.",
         model=model,
         tools=[YFinanceTools(stock_price=True, analyst_recommendations=True, company_info=True)],
         instructions=[
             f"""
             <agent_profile>
-                <role>Quantitative financial analyst specializing in market data and metrics. Focuses on ANALYSIS.</role>
+                <role>Quantitative financial analyst specializing in market data and metrics. Focuses on ANALYSIS and CURRENT DATA.</role>
                 <current_date>{current_date}</current_date>
-                <objective>Provide comprehensive market analysis and financial insights</objective>
+                <objective>Provide comprehensive market analysis and financial insights based ONLY on the LATEST data from TODAY.</objective>
             </agent_profile>
 
             <task>
-                Use YFinanceTools to gather financial data related to the user's query.
+                Use YFinanceTools to gather ONLY the ABSOLUTE LATEST financial data related to the user's query.
                 Focus on retrieving stock prices, analyst recommendations, and company information.
-                Analyze the data to identify key trends and insights.  The goal is to analyze the data, not just report the most recent data point.
+                ANALYZE THE DATA.  Do NOT provide any historical data or data from prior dates.
+                The goal is to analyze the data, not just report old data.
             </task>
 
             <data_collection>
@@ -161,10 +152,6 @@ def create_finance_agent(model) -> Agent:
                         <indicators>Technical indicators and patterns</indicators>
                         <volatility>Market volatility measures</volatility>
                     </real_time>
-                    <historical>
-                        <timeframes>Daily, weekly, monthly comparisons</timeframes>
-                        <benchmarks>Sector and market indices</benchmarks>
-                    </historical>
                 </market_data>
                 <fundamental_data>
                     <metrics>Key financial ratios and valuations</metrics>
@@ -189,7 +176,7 @@ def create_finance_agent(model) -> Agent:
                     <analysis>Direct query-relevant insights</analysis>
                 </structure>
                 <quality_standards>
-                    <accuracy>Verified current data only</accuracy>
+                    <accuracy>Verified current data ONLY</accuracy>
                     <relevance>Query-specific information</relevance>
                     <highlight>Significant deviations and anomalies</highlight>
                 </quality_standards>
@@ -198,8 +185,8 @@ def create_finance_agent(model) -> Agent:
             <example>
                 User Query: "AAPL stock analysis"
                 Expected Output:
-                - Current Price: $170.00
-                  Analyst Recommendations: Buy
+                - Current Price: $170.00 (as of CURRENT DATE)
+                  Analyst Recommendations: Buy (as of CURRENT DATE)
                   Company Information: Apple Inc. is a technology company.
                   Analysis: The stock is currently trading at $170.00 and analysts recommend buying it.
             </example>
@@ -221,24 +208,24 @@ def create_team_agent(model, web_agent: Agent, finance_agent: Agent) -> Agent:
             <agent_profile>
                 <role>Integrated financial analysis coordinator</role>
                 <current_date>{current_date}</current_date>
-                <objective>Coordinate financial analysis using available tools and team members</objective>
+                <objective>Coordinate financial analysis using available tools and ensure ALL data is CURRENT.</objective>
             </agent_profile>
 
             > If the user asks "Until when do you have data?", respond ONLY with: "We have access to up-to-date financial data through YFinance and DuckDuckGo APIs." Do NOT add any extra explanation or context.
 
             <task>
-                Coordinate financial analysis by using the YFinanceTools and DuckDuckGoTools directly.
-                1. Use YFinanceTools to gather financial data related to the user's query (e.g., stock prices, analyst recommendations, company information).
-                2. Use DuckDuckGoTools to search for relevant financial news related to the user's query.
-                3. Combine the financial data and news into a comprehensive analysis.  Present the key findings in a clear and concise manner.
+                Coordinate financial analysis by using the following tools: YFinanceTools and DuckDuckGoTools.
+                1. Use YFinanceTools to gather ONLY the LATEST, CURRENT financial data (e.g., stock prices, analyst recommendations, company information) for the user's query.
+                2. Use DuckDuckGoTools to search for the LATEST, CURRENT financial news and market updates related to the user's query.
+                3. Combine the financial data and news into a comprehensive analysis. Present the key findings and insights in a clear and concise manner. Ensure all data is from the CURRENT DATE.
             </task>
 
             <example>
                 User Query: "AAPL stock analysis"
                 Expected Output:
-                - Current Price: $170.00 (Source: YFinanceTools)
-                - Analyst Recommendations: Buy (Source: YFinanceTools)
-                - Recent News: Apple Announces New Product Line (Source: Reuters)
+                - Current Price: $170.00 (Source: YFinanceTools, as of CURRENT DATE)
+                - Analyst Recommendations: Buy (Source: YFinanceTools, as of CURRENT DATE)
+                - Recent News: Apple Announces New Product Line (Source: Reuters, CURRENT DATE)
                 - Analysis: Positive news and analyst recommendations suggest a favorable outlook for AAPL.
             </example>
             """
@@ -261,9 +248,9 @@ def process_query(query: str, team_agent: Agent) -> str:
     try:
         current_date = datetime.now().strftime("%Y-%m-%d")
         contextualized_query = f"""
-        Analyze the following query using available tools (YFinanceTools and DuckDuckGoTools) as of {current_date}:
+        Analyze the following query using available tools (YFinanceTools and DuckDuckGoTools) as of {current_date}.
+        It is ABSOLUTELY CRITICAL that you use ONLY CURRENT data.
         {query}
-
         """
 
         max_retries = 3
@@ -273,6 +260,18 @@ def process_query(query: str, team_agent: Agent) -> str:
         while retry_count < max_retries:
             try:
                 result = team_agent.run(contextualized_query)
+                # Check if the data is current (Crutial):
+                if current_date not in result.content:  # A simple check.  Improve as needed
+                    logger.warning("Data is not current. Retrying...")
+                    contextualized_query = f"""
+                    Analyze the following query using available tools (YFinanceTools and DuckDuckGoTools) as of {current_date}.
+                    IT IS ABSOLUTELY ESSENTIAL THAT YOU USE ONLY CURRENT DATA FROM TODAY.  DO NOT USE OLD DATA.
+                    {query}
+                    """
+                    retry_count +=1
+                    time.sleep(wait_time) #wait time to be increase to let it fetch data.
+                    continue
+
                 return result.content if hasattr(result, "content") else str(result)
             except requests.exceptions.RequestException as e:
                 if "rate limit" in str(e).lower():
@@ -310,10 +309,7 @@ def setup_streamlit_ui():
     Enter your query regarding stocks, market trends, or economic events below.
     """)
 
-    # Display current date
-    current_date = datetime.now().strftime("%Y-%m-%d")
-    st.sidebar.markdown(f"**Current Date:** {current_date}")
-
+    
     st.sidebar.header("⚙️ Settings")
     model_choice = st.sidebar.radio(
         "Select Analysis Model:",
@@ -369,7 +365,7 @@ def main():
 
     except Exception as e:
         logger.critical(f"Application error: {e}", exc_info=True)
-        st.error("An unexpected error occurred. Please try again later.")
+        st.error("An unexpected error occurred.")
         ErrorHandler.handle_api_error()
 
 if __name__ == "__main__":
