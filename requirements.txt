@@ -1,6 +1,7 @@
-agno
 python-dotenv
+agno
+duckduckgo-search
+yfinance
 groq
 streamlit
 pytest
-
