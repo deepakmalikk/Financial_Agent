@@ -3,10 +3,10 @@ import streamlit as st
 import logging
 import requests.exceptions
 from datetime import datetime
-from phi.agent import Agent
-from phi.model.groq import Groq
-from phi.tools.duckduckgo import DuckDuckGo
-from phi.tools.yfinance import YFinanceTools
+from agno.agent import Agent
+from agno.models.groq import Groq
+from agno.tools.duckduckgo import DuckDuckGoTools
+from agno.tools.yfinance import YFinanceTools
 from dotenv import load_dotenv
 
 # Configure logging
@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # API Keys
-GROQ_API_KEY = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY","")
-GROQ_API_KEY_TWO = os.getenv("GROQ_API_KEY_TWO") or st.secrets.get("GROQ_API_KEY_TWO","")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY", "")
+GROQ_API_KEY_TWO = os.getenv("GROQ_API_KEY_TWO") or st.secrets.get("GROQ_API_KEY_TWO", "")
 
 class DataValidator:
     """Validates and processes financial data."""
@@ -29,10 +29,7 @@ class DataValidator:
     @staticmethod
     def validate_ticker(ticker: str) -> bool:
         """Validate if the ticker symbol is properly formatted."""
-        if not ticker:
-            return False
-        # Basic validation for ticker format
-        return ticker.isalnum() and 1 <= len(ticker) <= 5
+        return bool(ticker) and ticker.isalnum() and 1 <= len(ticker) <= 5
 
     @staticmethod
     def validate_timeframe(timeframe: str) -> bool:
@@ -47,166 +44,141 @@ class ErrorHandler:
     def handle_api_error():
         st.error("""
         ⚠️ Data Provider Connection Error
-        - Checking alternative data sources
-        - Please retry in a few moments
+        - Checking alternative data sources...
+        - Please retry in a few moments.
         """)
 
     @staticmethod
     def handle_rate_limit():
-        st.warning("⏳ Request limit reached. Please wait a moment before trying again.")
+        st.warning("⏳ Request limit reached. Please wait before trying again.")
 
     @staticmethod
     def handle_invalid_query():
         st.warning("⚠️ Please provide a valid financial query or ticker symbol.")
 
 def create_model(model_choice: str) -> Groq:
-    """Create and return the appropriate Groq model."""
+    """Create and return the appropriate Groq model instance."""
     models = {
-        "llama-3.3-70b-versatile": (GROQ_API_KEY, "llama-3.3-70b-versatile"),
-        "deepseek-r1-distill-llama-70b": (GROQ_API_KEY_TWO, "deepseek-r1-distill-llama-70b")
+        "llama-3.1-8b-instant": (GROQ_API_KEY, "llama-3.1-8b-instant"),
+        "mixtral-8x7b-32768": (GROQ_API_KEY_TWO, "mixtral-8x7b-32768")
     }
-    
-    api_key, model_id = models.get(model_choice, (GROQ_API_KEY_TWO, "deepseek-r1-distill-llama-70b"))
+    api_key, model_id = models.get(model_choice, (GROQ_API_KEY_TWO, "mixtral-8x7b-32768"))
     return Groq(id=model_id, api_key=api_key)
 
 def create_web_search_agent(model) -> Agent:
-    """Create Web Search Agent with focused financial news analysis."""
+    """Create Web Search Agent for real-time financial news using DuckDuckGo."""
     return Agent(
         name="Web_Search_Agent",
+        role="Search the web for information",
         model=model,
-        tools=[DuckDuckGo()],
+        tools=[DuckDuckGoTools()],
         instructions=[
             """
             <role>
-                You are a financial news analyst focused on real-time market intelligence and breaking news.
+                You are a financial news analyst focused on real-time market intelligence.
             </role>
 
             <data_requirements>
-                - Provide only verified, current financial information
-                - Focus on breaking news and market-moving events
-                - Include source credibility assessment
+                - Provide only verified, current financial news and market events.
+                - Focus on breaking news that impacts financial markets.
             </data_requirements>
 
             <output_format>
-                - Timestamp [ET] for each news item
-                - Clear headline and source attribution
-                - Impact analysis on relevant markets/assets
-                - Verification status of information
+                - Include a timestamp [ET] for each news item.
+                - Provide a concise headline with source attribution.
+                - Analyze the impact on relevant markets or assets.
+                - Do not include extra commentary beyond the query.
             </output_format>
 
             <prohibited>
-                - No AI/model references
-                - No training data mentions
-                - No speculative content
+                - No speculative or off-topic content.
+                - No AI/model meta-references.
             </prohibited>
             """
         ],
-        show_tool_calls=False,
+        show_tool_calls=True,
         markdown=True,
         hide_prompt=True
     )
 
 def create_finance_agent(model) -> Agent:
-    """Create Finance Agent with comprehensive market analysis capabilities."""
+    """Create Finance Analysis Agent for quantitative market insights using YFinanceTools."""
     return Agent(
         name="Finance_Analysis_Agent",
+        role="Get financial data",
         model=model,
-        tools=[YFinanceTools(
-            stock_price=True,
-            analyst_recommendations=True,
-            stock_fundamentals=True,
-            company_info=True,
-            company_news=True
-        )],
+        tools=[YFinanceTools(stock_price=True, analyst_recommendations=True, company_info=True)],
         instructions=[
             """
             <role>
-                You are a quantitative analyst providing real-time financial data analysis.
+                You are a quantitative analyst providing real-time market data and financial metrics.
             </role>
 
             <analysis_requirements>
-                - Real-time price and volume analysis
-                - Key financial metrics and ratios
-                - Technical indicator calculations
-                - Institutional activity monitoring
+                - Retrieve current stock price and volume data.
+                - Compute key financial ratios and technical indicators.
+                - Monitor institutional activity and unusual market moves.
             </analysis_requirements>
 
             <output_format>
-                - Current market data in clear tables
-                - Technical analysis summary
-                - Key performance metrics
-                - Risk indicators and unusual activity
+                - Present data in clear, concise tables.
+                - Provide only information directly answering the user's query.
+                - Avoid extraneous details.
             </output_format>
 
             <data_standards>
-                - All data must be current
-                - Include confidence levels
-                - Flag any data anomalies
-                - Note significant deviations
+                - All data must be current and verified.
+                - Highlight any anomalies or significant deviations.
             </data_standards>
             """
         ],
-        show_tool_calls=False,
+        show_tool_calls=True,
         markdown=True,
         hide_prompt=True
     )
 
 def create_team_agent(model, web_agent: Agent, finance_agent: Agent) -> Agent:
-    """Create Team Agent for integrated financial analysis."""
+    """Create Team Agent to integrate results from web search and finance analysis agents."""
     return Agent(
         name="Finance_Team_Agent",
-        model=model,
         team=[web_agent, finance_agent],
+        model=model,
         instructions=[
             """
             <role>
-                You are a comprehensive financial analysis system providing real-time market insights.
+                You are an integrated financial analysis system consolidating real-time news and market data.
             </role>
 
             <integration_requirements>
-                - Combine market data with news analysis
-                - Link price movements to events
-                - Identify key market drivers
-                - Provide actionable insights
+                - Combine insights from web search and finance analysis.
+                - Cross-reference price movements with market events.
+                - Provide a direct and concise answer strictly based on the user's query.
             </integration_requirements>
 
             <output_structure>
                 1. Key Findings
-                   - Critical updates
-                   - Major market moves
-                   - Important developments
-
+                   - Critical updates and market moves directly related to the query.
                 2. Market Analysis
-                   - Price/volume data
-                   - Technical indicators
-                   - Comparative metrics
-
+                   - Current price/volume data, key metrics, and technical indicators.
                 3. News Impact
-                   - Breaking news analysis
-                   - Market reaction assessment
-                   - Sentiment indicators
-
-                4. Risk Assessment
-                   - Current risk factors
-                   - Volatility measures
-                   - Unusual patterns
+                   - Relevant breaking news and sentiment analysis.
             </output_structure>
 
             <quality_standards>
-                - Real-time data verification
-                - Cross-reference all information
-                - Clear confidence levels
-                - Actionable conclusions
+                - Only include information that directly answers the query.
+                - Omit any extraneous commentary.
+                - Provide clear source attributions and confidence levels.
             </quality_standards>
             """
         ],
-        show_tool_calls=False,
+        show_tool_calls=True,
         markdown=True,
-        hide_prompt=True
+        hide_prompt=True,
+        debug_mode=True
     )
 
 def process_query(query: str, team_agent: Agent) -> str:
-    """Process financial queries with enhanced error handling."""
+    """Process the user's financial query with enhanced error handling."""
     if not query.strip():
         ErrorHandler.handle_invalid_query()
         return ""
@@ -229,47 +201,40 @@ def process_query(query: str, team_agent: Agent) -> str:
     return ""
 
 def setup_streamlit_ui():
-    """Configure Streamlit UI with enhanced features."""
-    st.set_page_config(page_title="Financial Insights", page_icon="📈", layout="wide")
+    """Configure the Streamlit UI with settings for a smooth user experience."""
+    st.set_page_config(page_title="Financial Insights Engine", page_icon="📈", layout="wide")
     
-    # Main title and description
     st.title("📈 Financial Insights Engine")
     st.markdown("""
-    Get real-time financial analysis and market insights. Enter any query about:
-    - Stocks and market performance
-    - Company analysis and news
-    - Economic trends and data
-    - Market-moving events
+    Get real-time financial analysis, market data, and breaking news in one place.
+    Enter your query regarding stocks, market trends, or economic events below.
     """)
 
-    # Sidebar configuration
     st.sidebar.header("⚙️ Settings")
     model_choice = st.sidebar.selectbox(
-        "Analysis Model:",
-        ["llama-3.3-70b-versatile", "deepseek-r1-distill-llama-70b"],
-        help="Select the analysis model for your queries"
+        "Select Analysis Model:",
+        ["llama-3.1-8b-instant", "mixtral-8x7b-32768"],
+        help="Choose the model powering the financial analysis."
     )
 
-    # Advanced options
     with st.sidebar.expander("🔧 Advanced Options"):
         st.markdown("""
         - Detailed technical analysis
         - Fundamental metrics
-        - Market sentiment analysis
+        - Market sentiment tracking
         - Historical comparisons
         """)
 
     return model_choice
 
 def main():
-    """Main application function with enhanced error handling."""
+    """Main application function orchestrating the multiagent framework."""
     try:
         if not GROQ_API_KEY:
-            st.warning("⚠️ API key missing. Please check configuration.")
+            st.warning("⚠️ API key missing. Please check your configuration.")
             return
 
         model_choice = setup_streamlit_ui()
-        
         query = st.text_input(
             "Enter your financial query:",
             placeholder="Example: 'AAPL stock analysis' or 'Bitcoin market trends'"
