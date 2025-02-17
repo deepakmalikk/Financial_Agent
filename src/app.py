@@ -29,7 +29,7 @@ GROQ_API_KEY_TWO = os.getenv("GROQ_API_KEY_TWO") or st.secrets.get("GROQ_API_KEY
 def create_model(model_choice: str) -> Groq:
     """Create and return a Groq model instance based on the selected option."""
     models = {
-        "llama-3.1-8b-instant": (GROQ_API_KEY, "llama-3.1-8b-instant"),
+        "llama3-70b-8192": (GROQ_API_KEY, "llama3-70b-8192"),
         "llama-3.3-70b-versatile": (GROQ_API_KEY_TWO, "llama-3.3-70b-versatile")
     }
     api_key, model_id = models.get(model_choice, (GROQ_API_KEY_TWO, "llama-3.3-70b-versatile"))
@@ -45,8 +45,7 @@ def create_web_search_agent(model: Groq) -> Agent:
         <objective>Fetch and analyze the absolute latest financial news using DuckDuckGo</objective>
     </agent_profile>
     <task>
-        Retrieve today's financial news from reputable sources and provide a brief analysis.
-        Output only the final summary, without any internal processing details.
+        Retrieve today’s financial news from reputable sources and provide a brief analysis.
     </task>
     """
     return Agent(
@@ -70,7 +69,6 @@ def create_finance_agent(model: Groq) -> Agent:
     </agent_profile>
     <task>
         Use YFinanceTools to fetch current stock prices, analyst recommendations, and company info based on the query.
-        Output only the final summary, with no extra internal details.
     </task>
     """
     return Agent(
@@ -86,18 +84,18 @@ def create_finance_agent(model: Groq) -> Agent:
 def create_team_agent(model: Groq, web_agent: Agent, finance_agent: Agent) -> Agent:
     """Create a team agent that integrates outputs from both web and finance agents."""
     current_date = datetime.now().strftime("%Y-%m-%d")
+   
     instructions = f"""
     <agent_profile>
-        <role>Financial Analysis Coordinator</role>
-        <current_date>{current_date}</current_date>
-        <objective>Integrate the latest news and market data for comprehensive analysis</objective>
+    <role>Financial Analysis Coordinator</role>
+    <current_date>{current_date}</current_date>
+    <objective>Provide a comprehensive analysis by integrating the latest financial news and market data.</objective>
     </agent_profile>
     <task>
-        Use WebSearchAgent to fetch the latest financial news and FinanceAgent for up-to-date market data.
-        Combine both outputs into a concise final summary analysis.
-        **Important:** Provide only the final answer in plain text. Do NOT include any internal tool calls or chain-of-thought details.
+    Gather the latest financial news and up-to-date market data relevant to the user's query. Synthesize this information into a concise and informative response. Ensure that the analysis is based on the most recent data available.
     </task>
     """
+
     return Agent(
         name="TeamAgent",
         team=[web_agent, finance_agent],
@@ -106,32 +104,6 @@ def create_team_agent(model: Groq, web_agent: Agent, finance_agent: Agent) -> Ag
         show_tool_calls=False,
         markdown=True
     )
-
-def format_response(response: str) -> str:
-    """
-    Clean and format the agent's response by joining fragmented single-character lines
-    and preserving proper paragraph breaks.
-    """
-    lines = response.splitlines()
-    formatted_lines = []
-    buffer = []
-    for line in lines:
-        stripped = line.strip()
-        # If a line consists of a single character, add it to a temporary buffer.
-        if len(stripped) == 1:
-            buffer.append(stripped)
-        else:
-            # If buffer has collected letters, join them to form a word.
-            if buffer:
-                formatted_lines.append("".join(buffer))
-                buffer = []
-            formatted_lines.append(stripped)
-    # Append any remaining buffered letters.
-    if buffer:
-        formatted_lines.append("".join(buffer))
-    
-    # Join lines with a double newline for clear paragraph separation.
-    return "\n\n".join(formatted_lines)
 
 def process_query(query: str, team_agent: Agent) -> str:
     """
@@ -153,8 +125,7 @@ def process_query(query: str, team_agent: Agent) -> str:
     
     try:
         result = team_agent.run(contextual_query)
-        response_text = result.content if hasattr(result, "content") else str(result)
-        return format_response(response_text)
+        return result.content if hasattr(result, "content") else str(result)
     except Exception as e:
         logger.error("Error processing query", exc_info=True)
         st.error("Our server is busy right now. Please try again after some time.")
@@ -170,22 +141,21 @@ def setup_streamlit_ui() -> str:
     st.title("📈 Financial Insights Engine")
     st.markdown("Enter your query to receive real-time financial analysis and the latest market updates.")
     
-    # Add simplified example queries section
+    # Add example queries section
     st.sidebar.header("Example Queries")
     st.sidebar.markdown("""
-    - **AAPL stock**  
-      Get the latest price and market summary for Apple.
-    - **BTC update**  
-      Get the current update on Bitcoin.
-    - **Tech news**  
-      Get the latest news from the technology sector.
+    - **AAPL stock analysis**  
+      Get the latest stock price, analyst recommendations, and market analysis for Apple Inc.
+    - **Bitcoin market trends**  
+      Understand the current trends in the cryptocurrency market.
+    - **Recent tech sector news**  
+      Fetch the latest news impacting the technology sector.
+   
     """)
     
-    # Pre-select "llama-3.3-70b-versatile" as the default model (index=1)
     model_choice = st.sidebar.radio(
         "Select Analysis Model:",
-        ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"],
-        index=1
+        ["llama3-70b-8192", "llama-3.3-70b-versatile"]
     )
     return model_choice
 
@@ -195,8 +165,8 @@ def main():
         return
 
     model_choice = setup_streamlit_ui()
-    query = st.text_input("Enter your financial query:", placeholder="e.g., 'TSLA stock'")
-    
+    query = st.text_input("Enter your financial query:", placeholder="e.g., 'TSLA stock price'")
+
     if st.button("Analyze"):
         with st.spinner("Fetching the latest financial updates..."):
             try:
