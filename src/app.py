@@ -134,11 +134,11 @@ def process_query(query: str, team_agent: Agent) -> str:
 def setup_streamlit_ui() -> str:
     """Set up the Streamlit UI and return the selected model choice."""
     st.set_page_config(
-        page_title="Financial Insights Engine",
+        page_title="Financial Agent",
         page_icon="📈",
         layout="wide"
     )
-    st.title("📈 Financial Insights Engine")
+    st.title("📈 Financial Agent")
     st.markdown("Enter your query to receive real-time financial analysis and the latest market updates.")
     
     # Add example queries section
