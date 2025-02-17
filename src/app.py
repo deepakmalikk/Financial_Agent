@@ -170,17 +170,15 @@ def setup_streamlit_ui() -> str:
     st.title("📈 Financial Insights Engine")
     st.markdown("Enter your query to receive real-time financial analysis and the latest market updates.")
     
-    # Add example queries section
+    # Add simplified example queries section
     st.sidebar.header("Example Queries")
     st.sidebar.markdown("""
-    - **AAPL stock analysis**  
-      Get the latest stock price, analyst recommendations, and market analysis for Apple Inc.
-    - **Bitcoin market trends**  
-      Understand the current trends and forecasts in the cryptocurrency market.
-    - **Recent tech sector news**  
-      Fetch the latest news impacting the technology sector.
-    - **Till when do you have data?**  
-      Check data availability information.
+    - **AAPL stock**  
+      Get the latest price and market summary for Apple.
+    - **BTC update**  
+      Get the current update on Bitcoin.
+    - **Tech news**  
+      Get the latest news from the technology sector.
     """)
     
     # Pre-select "llama-3.3-70b-versatile" as the default model (index=1)
@@ -197,8 +195,8 @@ def main():
         return
 
     model_choice = setup_streamlit_ui()
-    query = st.text_input("Enter your financial query:", placeholder="e.g., 'AAPL stock analysis'")
-
+    query = st.text_input("Enter your financial query:", placeholder="e.g., 'TSLA stock'")
+    
     if st.button("Analyze"):
         with st.spinner("Fetching the latest financial updates..."):
             try:
