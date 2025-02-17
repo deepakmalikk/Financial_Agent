@@ -45,7 +45,8 @@ def create_web_search_agent(model: Groq) -> Agent:
         <objective>Fetch and analyze the absolute latest financial news using DuckDuckGo</objective>
     </agent_profile>
     <task>
-        Retrieve today’s financial news from reputable sources and provide a brief analysis.
+        Retrieve today's financial news from reputable sources and provide a brief analysis.
+        Output only the final summary, without any internal processing details.
     </task>
     """
     return Agent(
@@ -69,6 +70,7 @@ def create_finance_agent(model: Groq) -> Agent:
     </agent_profile>
     <task>
         Use YFinanceTools to fetch current stock prices, analyst recommendations, and company info based on the query.
+        Output only the final summary, with no extra internal details.
     </task>
     """
     return Agent(
@@ -92,7 +94,8 @@ def create_team_agent(model: Groq, web_agent: Agent, finance_agent: Agent) -> Ag
     </agent_profile>
     <task>
         Use WebSearchAgent to fetch the latest financial news and FinanceAgent for up-to-date market data.
-        Then combine both outputs into a concise, analysis-driven response.
+        Combine both outputs into a concise final summary analysis.
+        **Important:** Provide only the final answer in plain text. Do NOT include any internal tool calls or chain-of-thought details.
     </task>
     """
     return Agent(
@@ -103,6 +106,32 @@ def create_team_agent(model: Groq, web_agent: Agent, finance_agent: Agent) -> Ag
         show_tool_calls=False,
         markdown=True
     )
+
+def format_response(response: str) -> str:
+    """
+    Clean and format the agent's response by joining fragmented single-character lines
+    and preserving proper paragraph breaks.
+    """
+    lines = response.splitlines()
+    formatted_lines = []
+    buffer = []
+    for line in lines:
+        stripped = line.strip()
+        # If a line consists of a single character, add it to a temporary buffer.
+        if len(stripped) == 1:
+            buffer.append(stripped)
+        else:
+            # If buffer has collected letters, join them to form a word.
+            if buffer:
+                formatted_lines.append("".join(buffer))
+                buffer = []
+            formatted_lines.append(stripped)
+    # Append any remaining buffered letters.
+    if buffer:
+        formatted_lines.append("".join(buffer))
+    
+    # Join lines with a double newline for clear paragraph separation.
+    return "\n\n".join(formatted_lines)
 
 def process_query(query: str, team_agent: Agent) -> str:
     """
@@ -124,10 +153,11 @@ def process_query(query: str, team_agent: Agent) -> str:
     
     try:
         result = team_agent.run(contextual_query)
-        return result.content if hasattr(result, "content") else str(result)
+        response_text = result.content if hasattr(result, "content") else str(result)
+        return format_response(response_text)
     except Exception as e:
         logger.error("Error processing query", exc_info=True)
-        st.error("An error occurred while processing your query.")
+        st.error("Our server is busy right now. Please try again after some time.")
         return ""
 
 def setup_streamlit_ui() -> str:
@@ -140,9 +170,24 @@ def setup_streamlit_ui() -> str:
     st.title("📈 Financial Insights Engine")
     st.markdown("Enter your query to receive real-time financial analysis and the latest market updates.")
     
+    # Add example queries section
+    st.sidebar.header("Example Queries")
+    st.sidebar.markdown("""
+    - **AAPL stock analysis**  
+      Get the latest stock price, analyst recommendations, and market analysis for Apple Inc.
+    - **Bitcoin market trends**  
+      Understand the current trends and forecasts in the cryptocurrency market.
+    - **Recent tech sector news**  
+      Fetch the latest news impacting the technology sector.
+    - **Till when do you have data?**  
+      Check data availability information.
+    """)
+    
+    # Pre-select "llama-3.3-70b-versatile" as the default model (index=1)
     model_choice = st.sidebar.radio(
         "Select Analysis Model:",
-        ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"]
+        ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"],
+        index=1
     )
     return model_choice
 
@@ -156,18 +201,22 @@ def main():
 
     if st.button("Analyze"):
         with st.spinner("Fetching the latest financial updates..."):
-            model = create_model(model_choice)
-            web_agent = create_web_search_agent(model)
-            finance_agent = create_finance_agent(model)
-            team_agent = create_team_agent(model, web_agent, finance_agent)
-            result = process_query(query, team_agent)
-            
-            if result:
-                st.markdown(f"**Result from {team_agent.name}:**")
-                st.markdown(result)
-                utc_now = pytz.utc.localize(datetime.utcnow())
-                ist_now = utc_now.astimezone(pytz.timezone("Asia/Kolkata"))
-                st.caption(f"Analysis completed at: {ist_now.strftime('%Y-%m-%d %H:%M:%S IST')}")
+            try:
+                model = create_model(model_choice)
+                web_agent = create_web_search_agent(model)
+                finance_agent = create_finance_agent(model)
+                team_agent = create_team_agent(model, web_agent, finance_agent)
+                result = process_query(query, team_agent)
+                
+                if result:
+                    st.markdown(f"**Result from {team_agent.name}:**")
+                    st.markdown(result)
+                    utc_now = pytz.utc.localize(datetime.utcnow())
+                    ist_now = utc_now.astimezone(pytz.timezone("Asia/Kolkata"))
+                    st.caption(f"Analysis completed at: {ist_now.strftime('%Y-%m-%d %H:%M:%S IST')}")
+            except Exception as e:
+                logger.error("Server error", exc_info=True)
+                st.error("Our server is busy right now. Please try again after some time.")
 
 if __name__ == "__main__":
     main()
