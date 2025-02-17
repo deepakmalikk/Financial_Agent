@@ -54,7 +54,7 @@ def create_web_search_agent(model: Groq) -> Agent:
         model=model,
         tools=[DuckDuckGoTools()],
         instructions=[instructions],
-        show_tool_calls=True,
+        show_tool_calls=False,
         markdown=True
     )
 
@@ -77,7 +77,7 @@ def create_finance_agent(model: Groq) -> Agent:
         model=model,
         tools=[YFinanceTools(stock_price=True, analyst_recommendations=True, company_info=True)],
         instructions=[instructions],
-        show_tool_calls=True,
+        show_tool_calls=False,
         markdown=True
     )
 
@@ -100,12 +100,21 @@ def create_team_agent(model: Groq, web_agent: Agent, finance_agent: Agent) -> Ag
         team=[web_agent, finance_agent],
         model=model,
         instructions=[instructions],
-        show_tool_calls=True,
+        show_tool_calls=False,
         markdown=True
     )
 
 def process_query(query: str, team_agent: Agent) -> str:
-    """Process the user’s query by delegating to the team agent."""
+    """
+    Process the user's query by:
+      1. Immediately handling queries about data availability.
+      2. Otherwise, delegating to the TeamAgent.
+    """
+    lower_query = query.lower().strip()
+    # Check if the user is asking about data availability.
+    if "until when" in lower_query or "till when" in lower_query:
+        return "We have access to up-to-date financial data through YFinance and DuckDuckGo APIs."
+
     if not query.strip():
         st.warning("Please enter a valid financial query.")
         return ""
