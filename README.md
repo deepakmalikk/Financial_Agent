@@ -44,7 +44,7 @@ A user asks: _"What is the latest update on Tesla stock?"_
 
 ## 🛠️ Technologies Used  
 
-- **[Phidata](https://phidata.com/)** – Advanced AI modeling  
+- **[Agno](https://agno.com/)** – Advanced AI modeling  
 - **[DuckDuckGo API](https://duckduckgo.com/)** – Web search for finance news  
 - **[YFinanceTools](https://pypi.org/project/yfinance/)** – Stock market data  
 - **[Streamlit](https://streamlit.io/)** – Interactive UI  
@@ -86,9 +86,9 @@ flowchart TD
    cd Financial_Agent
 2. **Set Up Environment Variables**:
    ```bash
-   GROQ_API_KEY=your_groq_api_key_here
-   GOOGLE_API_KEY=your_google_api_key_here
-
+   OPENAI_API_KEY=your_openai_api_key_here
+   ANTHROPIC_API_KEY =your_anthropic_api_key_here
+ 
 3. **Install Dependencies**:
    ```bash
    pip install -r requirements.txt
