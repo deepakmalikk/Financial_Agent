@@ -30,12 +30,12 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY") or st.secrets.get("ANTHROPIC_
 def create_model(model_choice: str):
     """Create and return an LLM model instance based on the selected option."""
     if model_choice == "claude-3-5-haiku-20241022":
-        return Claude(api_key=ANTHROPIC_API_KEY, model=model_choice)
+        return Claude(id=model_choice,api_key=ANTHROPIC_API_KEY)
     elif model_choice == "gpt-4o-mini":
-        return OpenAIChat(api_key=OPENAI_API_KEY, model=model_choice)
+        return OpenAIChat(id=model_choice,api_key=OPENAI_API_KEY)
     else:
         # Default to OpenAIChat if model_choice is not recognized.
-        return Claude(api_key=ANTHROPIC_API_KEY, model="claude-3-5-haiku-20241022")
+        return Claude(id="claude-3-5-haiku-20241022",api_key=ANTHROPIC_API_KEY)
 
 def create_web_search_agent(model) -> Agent:
     """Create an agent that uses DuckDuckGo to fetch the latest financial news."""
