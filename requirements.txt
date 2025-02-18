@@ -2,6 +2,7 @@ python-dotenv
 agno
 duckduckgo-search
 yfinance
-groq
+anthropic
+openai
 streamlit
 pytest
