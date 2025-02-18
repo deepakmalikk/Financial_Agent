@@ -35,7 +35,7 @@ def create_model(model_choice: str):
         return OpenAIChat(api_key=OPENAI_API_KEY, model=model_choice)
     else:
         # Default to OpenAIChat if model_choice is not recognized.
-        return OpenAIChat(api_key=OPENAI_API_KEY, model="gpt-4o-mini")
+        return Claude(api_key=ANTHROPIC_API_KEY, model="claude-3-5-haiku-20241022")
 
 def create_web_search_agent(model) -> Agent:
     """Create an agent that uses DuckDuckGo to fetch the latest financial news."""
