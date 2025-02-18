@@ -8,7 +8,8 @@ import pytz
 from dotenv import load_dotenv
 
 from agno.agent import Agent
-from agno.models.groq import Groq
+from agno.models.anthropic import Claude
+from agno.models.openai import OpenAIChat
 from agno.tools.duckduckgo import DuckDuckGoTools
 from agno.tools.yfinance import YFinanceTools
 
@@ -23,19 +24,20 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # API Keys
-GROQ_API_KEY = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY", "")
-GROQ_API_KEY_TWO = os.getenv("GROQ_API_KEY_TWO") or st.secrets.get("GROQ_API_KEY_TWO", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY") or st.secrets.get("ANTHROPIC_API_KEY")
 
-def create_model(model_choice: str) -> Groq:
-    """Create and return a Groq model instance based on the selected option."""
-    models = {
-        "llama3-70b-8192": (GROQ_API_KEY, "llama3-70b-8192"),
-        "llama-3.3-70b-versatile": (GROQ_API_KEY_TWO, "llama-3.3-70b-versatile")
-    }
-    api_key, model_id = models.get(model_choice, (GROQ_API_KEY_TWO, "llama-3.3-70b-versatile"))
-    return Groq(id=model_id, api_key=api_key)
+def create_model(model_choice: str):
+    """Create and return an LLM model instance based on the selected option."""
+    if model_choice == "claude-3-5-haiku-20241022":
+        return Claude(api_key=ANTHROPIC_API_KEY, model=model_choice)
+    elif model_choice == "gpt-4o-mini":
+        return OpenAIChat(api_key=OPENAI_API_KEY, model=model_choice)
+    else:
+        # Default to OpenAIChat if model_choice is not recognized.
+        return OpenAIChat(api_key=OPENAI_API_KEY, model="gpt-4o-mini")
 
-def create_web_search_agent(model: Groq) -> Agent:
+def create_web_search_agent(model) -> Agent:
     """Create an agent that uses DuckDuckGo to fetch the latest financial news."""
     current_date = datetime.now().strftime("%Y-%m-%d")
     instructions = f"""
@@ -58,7 +60,7 @@ def create_web_search_agent(model: Groq) -> Agent:
         markdown=True
     )
 
-def create_finance_agent(model: Groq) -> Agent:
+def create_finance_agent(model) -> Agent:
     """Create an agent that uses YFinance to fetch current market data."""
     current_date = datetime.now().strftime("%Y-%m-%d")
     instructions = f"""
@@ -81,7 +83,7 @@ def create_finance_agent(model: Groq) -> Agent:
         markdown=True
     )
 
-def create_team_agent(model: Groq, web_agent: Agent, finance_agent: Agent) -> Agent:
+def create_team_agent(model, web_agent: Agent, finance_agent: Agent) -> Agent:
     """Create a team agent that integrates outputs from both web and finance agents."""
     current_date = datetime.now().strftime("%Y-%m-%d")
    
@@ -150,17 +152,16 @@ def setup_streamlit_ui() -> str:
       Understand the current trends in the cryptocurrency market.
     - **Recent tech sector news**  
       Fetch the latest news impacting the technology sector.
-   
     """)
     
     model_choice = st.sidebar.radio(
         "Select Analysis Model:",
-        ["llama3-70b-8192", "llama-3.3-70b-versatile"]
+        ["claude-3-5-haiku-20241022", "gpt-4o-mini"]
     )
     return model_choice
 
 def main():
-    if not GROQ_API_KEY:
+    if not ANTHROPIC_API_KEY:
         st.error("API key is missing. Please configure your API key.")
         return
 
