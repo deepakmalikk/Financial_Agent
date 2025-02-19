@@ -36,6 +36,7 @@ CRYPTO_MAPPING = {
     "SOLANA": "SOL-USD",
 }
 
+
 def create_model(model_choice: str):
     """Create model instance with reduced hallucination settings"""
     if model_choice == "claude-3-5-haiku-20241022":
@@ -64,19 +65,20 @@ def create_web_search_agent(model):
     )
 
 def create_finance_agent(model):
-    """Finance agent with strict output formatting"""
+    """Finance agent with crypto-aware data handling"""
     return Agent(
         name="Finance Agent",
         model=model,
         tools=[YFinanceTools(stock_price=True, analyst_recommendations=True)],
         show_tool_calls=True,
         instructions=dedent("""\
-            Return ONLY YFinance data in EXACT format:
-            - Current price: $[value]
-            - Currency: [currency]
-            - Change: [value]%
-            - Market cap: $[value]
-            Do NOT modify numbers. Use original decimals.
+            Return YFinance data in EXACT format:
+            - Asset Type: [Stock/Crypto]
+            - Current Price: $[value]
+            - Currency: USD
+            - 24h Change: [value]%
+            - Market Cap: $[value]
+            - Source: YFinance
             If unavailable, state "No data found."
         """),
         add_datetime_to_instructions=True,
@@ -84,60 +86,66 @@ def create_finance_agent(model):
     )
 
 def create_team_agent(model):
-    """Final agent with data validation"""
     return Agent(
         name="Team Agent",
         model=model,
         instructions=dedent("""\
-            Synthesize data from these verified sources:
-            1. Web Search Results
-            2. YFinance Data
-
-            Validation Rules:
-            - Prioritize YFinance for numerical data
-            - Cross-verify prices with web results
-            - Flag discrepancies >2% as warnings
-            - Use exact numbers without modification
-
-            Response Format:
-            # [Ticker] Analysis
-            ## Real-Time Data
-            - Price: $[value] ([source])
-            - Change: [value]% (Market Open)
-            ## Key Metrics
-            - Market Cap: $[value]
-            ## News Insights
-            - [Relevant news]
+            Synthesize data following these rules:
+            1. Use YFinance as primary source
+            2. Only use web data when YFinance unavailable
+            3. Flag any price differences >2% as warnings
+            4. Never modify numerical values
+            
+            Response Template:
+            # {Ticker} Analysis
+            ## Verified Data
+            - Price: ${price} (YFinance)
+            - 24h Change: {change}%
+            - Market Cap: ${market_cap}
+            ## Cross-Verification
+            {web_data_summary}
             ## Data Quality
-            - [Any discrepancies]
-            End with "Market Watch Team, {date}"
+            {warnings}
+            Market Watch Team, {date}
         """),
         show_tool_calls=False,
         add_datetime_to_instructions=True,
         markdown=True,
     )
 
+
 def resolve_ticker(query: str) -> str:
-    """Resolve cryptocurrency tickers"""
-    return CRYPTO_MAPPING.get(query.upper(), query)
+    """Enhanced ticker resolution with normalization"""
+    clean_query = re.sub(r'[^a-zA-Z0-9-]', '', query.upper())
+    return CRYPTO_MAPPING.get(clean_query, clean_query)
+
 
 def extract_price(data: str) -> float:
-    """Extract price from any data source"""
-    matches = re.findall(r'\$(\d{1,3}(?:,\d{3})*\.\d{2})', data)
-    return float(matches[0].replace(',', '')) if matches else None
+    """Robust price extraction with validation"""
+    # First try to find YFinance price
+    yfinance_match = re.search(r'Current Price: \$(\d{1,3}(?:,\d{3})*\.\d{2})', data)
+    if yfinance_match:
+        return float(yfinance_match.group(1).replace(',', ''))
+    
+    # Fallback to web price extraction
+    web_matches = re.findall(r'\$(\d{1,3}(?:,\d{3})*\.\d{2})', data)
+    if web_matches:
+        return max(map(lambda x: float(x.replace(',', '')), web_matches))
+    return None
 
 def retrieve_financial_data(query: str, agent: Agent) -> str:
-    """Retrieve and validate financial data"""
+    """Enhanced data retrieval with crypto validation"""
     try:
         resolved_query = resolve_ticker(query)
-        response = agent.run(f"Get data for {resolved_query}")
+        response = agent.run(f"Get crypto data for {resolved_query}")
+        
         if not response.content:
             return "No data found."
             
-        # Validate numerical integrity
-        price = extract_price(response.content)
-        if price and price < 1:  # Basic sanity check
-            logger.warning(f"Low price warning for {resolved_query}: {price}")
+        # Validate crypto-specific data patterns
+        if "USD" in resolved_query and "Asset Type: Crypto" not in response.content:
+            logger.warning(f"Possible stock/crypto confusion for {resolved_query}")
+            return "No valid crypto data found."
             
         return response.content
     except Exception as e:
@@ -274,5 +282,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
