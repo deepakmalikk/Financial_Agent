@@ -3,13 +3,13 @@ import streamlit as st
 import logging
 from datetime import datetime
 from dotenv import load_dotenv
+from textwrap import dedent
 
 from agno.agent import Agent, RunResponse
 from agno.models.anthropic import Claude
 from agno.models.openai import OpenAIChat
 from agno.tools.duckduckgo import DuckDuckGoTools
 from agno.tools.yfinance import YFinanceTools
-from textwrap import dedent
 
 # Configure logging
 logging.basicConfig(
@@ -28,25 +28,43 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY") or st.secrets.get("ANTHROPIC_
 def create_model(model_choice: str):
     """
     Create and return an LLM model instance based on the selected option.
+    Lower temperature is used to reduce hallucinations.
     """
     if model_choice == "claude-3-5-haiku-20241022":
         return Claude(id=model_choice, api_key=ANTHROPIC_API_KEY)
     elif model_choice == "gpt-4o-mini":
-        return OpenAIChat(id=model_choice, api_key=OPENAI_API_KEY)
+        # Lower temperature and controlled top_p for targeted outputs
+        return OpenAIChat(id=model_choice, api_key=OPENAI_API_KEY, temperature=0.2, top_p=0.9)
     else:
-        # Default to Claude if model_choice is not recognized.
         return Claude(id="claude-3-5-haiku-20241022", api_key=ANTHROPIC_API_KEY)
 
-def create_retrieval_agent(model):
+def create_web_search_agent(model):
     """
-    Create an agent dedicated to retrieving data from DuckDuckGo and YFinance.
-    This agent will be used to gather the raw data for the final RAG approach.
+    Create an agent dedicated to web searching using DuckDuckGoTools.
     """
-    retrieval_agent = Agent(
-        name="Retrieval Agent",
+    web_search_agent = Agent(
+        name="Web Search Agent",
+        model=model,
+        tools=[DuckDuckGoTools(search=True, news=True)],
+        show_tool_calls=True,
+        instructions=dedent("""\
+            You are a web search agent. Your job is to use DuckDuckGo to find relevant, up-to-date financial news and market developments.
+            For the given query, return ONLY the raw data in bullet points or short snippets.
+            If no relevant news is found, simply state "No data found."
+        """),
+        add_datetime_to_instructions=True,
+        markdown=False
+    )
+    return web_search_agent
+
+def create_finance_agent(model):
+    """
+    Create an agent dedicated to financial data retrieval using YFinanceTools.
+    """
+    finance_agent = Agent(
+        name="Finance Agent",
         model=model,
         tools=[
-            DuckDuckGoTools(search=True, news=True),
             YFinanceTools(
                 stock_price=True,
                 analyst_recommendations=True,
@@ -54,62 +72,56 @@ def create_retrieval_agent(model):
                 historical_prices=True,
                 company_info=True,
                 company_news=True,
-            ),
+            )
         ],
         show_tool_calls=True,
-        # Minimal instructions, just to gather data
         instructions=dedent("""\
-            You are a retrieval agent. Your job is to use the provided tools to:
-            1. Search for relevant news or information from DuckDuckGo.
-            2. Gather relevant financial data from YFinance.
-            3. Return ONLY the raw data or text you found, without any extra commentary.
-
-            IMPORTANT:
-            - Do not invent or summarize. Just provide the raw data or short bullet points.
-            - If no data is found, say 'No data found.'.
+            You are a financial data agent. Your job is to use YFinance to retrieve targeted financial data.
+            For the given query (such as a ticker), return the latest stock price, analyst recommendations, and relevant financial metrics in bullet points or tables.
+            If no data is found, state "No data found."
         """),
         add_datetime_to_instructions=True,
-        markdown=False,  # We'll parse or format the final output ourselves
+        markdown=False
     )
-    return retrieval_agent
+    return finance_agent
 
 def create_team_agent(model):
     """
-    Create the final agent that produces the structured financial analysis
-    based on the retrieved data from the retrieval agent.
+    Create the final team agent that synthesizes the data from both the web search and finance agents
+    into a cohesive, structured financial analysis.
     """
     team_agent = Agent(
         name="Team Agent",
         model=model,
         instructions=dedent("""\
-            You are the final financial analyst. You have the following data:
-            1. News data from DuckDuckGo
-            2. Financial data from YFinance
-
+            You are the final financial analyst. You have been provided with two sets of retrieved data:
+            1. Web Search Data (from DuckDuckGo)
+            2. Financial Data (from YFinance)
+            
             Your task:
-            - Integrate the retrieved data into a cohesive, structured financial analysis.
-            - Do NOT add or hallucinate any info not present in the retrieved data.
-            - If data is insufficient, state: "Insufficient Data."
+            - Integrate the two sets of data into a cohesive and structured financial analysis.
+            - Use ONLY the provided data. Do NOT invent or add any extra information.
+            - If the data is insufficient, state "Insufficient Data."
 
-            Output structure (in Markdown):
-            # [Stock/Topic] Analysis
+            Please structure your response in Markdown as follows:
+            # [Query] Analysis
 
             ## Executive Summary
-            - A short overview of the key points.
+            - Brief overview of the key points.
 
             ## Financial Data
-            - Summarize relevant metrics, using bullet points or tables.
+            - Summarize metrics (bullet points or tables).
 
             ## News Highlights
-            - Summarize relevant news headlines, quotes, or short snippets.
+            - Summarize key news and market updates.
 
             ## Key Takeaways
-            - Provide 2-3 bullet points of the most important insights.
+            - List 2-3 essential insights.
 
             ## Risk Factors
-            - If relevant, list possible risks or uncertainties.
+            - List any potential risks if applicable.
 
-            End with: "Market Watch Team, {current_date}"
+            End your analysis with "Market Watch Team, {current_date}"
         """),
         show_tool_calls=False,
         add_datetime_to_instructions=True,
@@ -117,51 +129,73 @@ def create_team_agent(model):
     )
     return team_agent
 
-def retrieve_context(query: str, retrieval_agent: Agent) -> str:
+def retrieve_web_data(query: str, web_search_agent: Agent) -> str:
     """
-    Use the Retrieval Agent to gather raw data about 'query'.
-    We pass instructions telling the agent to get news & financial info.
+    Use the Web Search Agent to gather raw news data about the query.
+    A targeted prompt is used to ensure relevant results.
     """
-    # The prompt instructs the agent to gather data from the tools
-    retrieval_prompt = f"""
-    Gather any relevant financial news and data about "{query}".
-    Return the raw data below. 
-    """
+    targeted_prompt = dedent(f"""\
+        Find targeted, up-to-date financial news and market developments about "{query}".
+        Return the raw data in bullet points or short snippets.
+        If no relevant news is found, state "No data found."
+    """)
     try:
-        response: RunResponse = retrieval_agent.run(retrieval_prompt)
-        # The agent will call DuckDuckGoTools and YFinanceTools behind the scenes
-        if response.content:
-            return response.content
-        else:
-            return "No data found."
+        response: RunResponse = web_search_agent.run(targeted_prompt)
+        return response.content if response.content else "No data found."
     except Exception as e:
-        logger.error("Error retrieving data", exc_info=True)
+        logger.error("Error retrieving web search data", exc_info=True)
         return "No data found."
 
-def process_query(query: str, retrieval_agent: Agent, team_agent: Agent) -> str:
+def retrieve_financial_data(query: str, finance_agent: Agent) -> str:
     """
-    Perform a Retrieval-Augmented Generation approach:
-    1. Use retrieval_agent to gather data about the query.
-    2. Pass that data to team_agent for final structured output.
+    Use the Finance Agent to gather raw financial data about the query using YFinance.
+    A targeted prompt is used for more accurate results.
+    """
+    targeted_prompt = dedent(f"""\
+        Retrieve the latest financial data for "{query}".
+        Include current stock price, analyst recommendations, and relevant financial metrics.
+        Return the data in bullet points or tables.
+        If no data is found, state "No data found."
+    """)
+    try:
+        response: RunResponse = finance_agent.run(targeted_prompt)
+        return response.content if response.content else "No data found."
+    except Exception as e:
+        logger.error("Error retrieving financial data", exc_info=True)
+        return "No data found."
+
+def process_query(query: str, web_search_agent: Agent, finance_agent: Agent, team_agent: Agent) -> str:
+    """
+    Perform a three-step Retrieval-Augmented Generation (RAG) process:
+    1. Retrieve web search data using the Web Search Agent.
+    2. Retrieve financial data using the Finance Agent.
+    3. Pass both results to the Team Agent for final analysis.
     """
     if not query.strip():
         st.warning("Please enter a valid financial query.")
         return ""
 
-    # Step 1: Retrieve context (raw data)
-    retrieved_data = retrieve_context(query, retrieval_agent)
+    # Step 1: Retrieve web search data
+    web_data = retrieve_web_data(query, web_search_agent)
+    # Step 2: Retrieve financial data
+    financial_data = retrieve_financial_data(query, finance_agent)
     current_date = datetime.now().strftime("%Y-%m-%d")
 
-    # Step 2: Pass the retrieved data to the final (team) agent
+    # Combine the retrieved data into a single prompt for the team agent.
     final_prompt = dedent(f"""\
         You have the following retrieved data about "{query}":
 
-        {retrieved_data}
+        --- Web Search Data ---
+        {web_data}
+
+        --- Financial Data ---
+        {financial_data}
 
         As of {current_date}, provide a structured financial analysis.
         Remember:
-        - Use ONLY the above data (no external info).
-        - If insufficient, say so.
+        - Use ONLY the provided data.
+        - Do NOT add or hallucinate additional information.
+        - If the data is insufficient, state "Insufficient Data."
     """)
     try:
         result: RunResponse = team_agent.run(final_prompt)
@@ -180,7 +214,7 @@ def setup_streamlit_ui() -> str:
     st.title("📈 Financial Agent")
     st.markdown("Enter your query to receive real-time, retrieval-augmented financial analysis and the latest market updates.")
     
-    # Example queries in sidebar
+    # Sidebar with example queries
     st.sidebar.header("Example Queries")
     st.sidebar.markdown("""
     - **What’s the latest news and financial performance of Apple (AAPL)?**  
@@ -189,7 +223,7 @@ def setup_streamlit_ui() -> str:
     - **Analyze Intel's foundry strategy impact on stock performance**
     - **What is the outlook for SOL's price?**
     """)
-
+    
     model_choice = st.sidebar.radio(
         "Select Analysis Model:",
         ["claude-3-5-haiku-20241022", "gpt-4o-mini"]
@@ -207,17 +241,16 @@ def main():
     if st.button("Analyze"):
         with st.spinner("Fetching the latest financial updates..."):
             try:
-                # 1) Create model
+                # 1) Create model with lower temperature settings for reduced hallucinations.
                 model = create_model(model_choice)
 
-                # 2) Create a retrieval agent
-                retrieval_agent = create_retrieval_agent(model)
-
-                # 3) Create the final (team) agent
+                # 2) Create three separate agents.
+                web_search_agent = create_web_search_agent(model)
+                finance_agent = create_finance_agent(model)
                 team_agent = create_team_agent(model)
 
-                # 4) Process query using RAG approach
-                result = process_query(query, retrieval_agent, team_agent)
+                # 3) Process the query using the three-step RAG approach.
+                result = process_query(query, web_search_agent, finance_agent, team_agent)
                 
                 if result:
                     st.markdown(f"**Result from {team_agent.name}:**")
