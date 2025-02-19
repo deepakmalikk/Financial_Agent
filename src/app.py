@@ -32,7 +32,7 @@ def create_model(model_choice: str):
     """
     if model_choice == "claude-3-5-haiku-20241022":
         return Claude(id=model_choice, api_key=ANTHROPIC_API_KEY)
-    elif model_choice == "gpt-4o-mini":
+    elif model_choice == "gpt-4o":
         # Lower temperature and controlled top_p for targeted outputs
         return OpenAIChat(id=model_choice, api_key=OPENAI_API_KEY, temperature=0.2, top_p=0.9)
     else:
@@ -226,7 +226,7 @@ def setup_streamlit_ui() -> str:
     
     model_choice = st.sidebar.radio(
         "Select Analysis Model:",
-        ["claude-3-5-haiku-20241022", "gpt-4o-mini"]
+        ["claude-3-5-haiku-20241022", "gpt-4o"]
     )
     return model_choice
 
