@@ -28,12 +28,11 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY") or st.secrets.get("ANTHROPIC_
 def create_model(model_choice: str):
     """
     Create and return an LLM model instance based on the selected option.
-    Lower temperature is used to reduce hallucinations.
+    Lower temperature and controlled top_p are used to reduce hallucinations.
     """
     if model_choice == "claude-3-5-haiku-20241022":
         return Claude(id=model_choice, api_key=ANTHROPIC_API_KEY)
     elif model_choice == "gpt-4o":
-        # Lower temperature and controlled top_p for targeted outputs
         return OpenAIChat(id=model_choice, api_key=OPENAI_API_KEY, temperature=0.2, top_p=0.9)
     else:
         return Claude(id="claude-3-5-haiku-20241022", api_key=ANTHROPIC_API_KEY)
@@ -78,6 +77,7 @@ def create_finance_agent(model):
         instructions=dedent("""\
             You are a financial data agent. Your job is to use YFinance to retrieve targeted financial data.
             For the given query (such as a ticker), return the latest stock price, analyst recommendations, and relevant financial metrics in bullet points or tables.
+            IMPORTANT: Return numeric values exactly as reported by YFinance. Do NOT perform any scaling or conversion (e.g., if the API returns "170", do not output "1.70").
             If no data is found, state "No data found."
         """),
         add_datetime_to_instructions=True,
@@ -87,7 +87,7 @@ def create_finance_agent(model):
 
 def create_team_agent(model):
     """
-    Create the final team agent that synthesizes the data from both the web search and finance agents
+    Create the final team agent that synthesizes data from both the web search and finance agents
     into a cohesive, structured financial analysis.
     """
     team_agent = Agent(
@@ -97,10 +97,11 @@ def create_team_agent(model):
             You are the final financial analyst. You have been provided with two sets of retrieved data:
             1. Web Search Data (from DuckDuckGo)
             2. Financial Data (from YFinance)
-            
+
             Your task:
             - Integrate the two sets of data into a cohesive and structured financial analysis.
-            - Use ONLY the provided data. Do NOT invent or add any extra information.
+            - USE ONLY the provided data. Do NOT invent or add any extra information.
+            - PRESERVE numeric values exactly as provided. DO NOT perform any scaling or conversion.
             - If the data is insufficient, state "Insufficient Data."
 
             Please structure your response in Markdown as follows:
@@ -154,6 +155,7 @@ def retrieve_financial_data(query: str, finance_agent: Agent) -> str:
     targeted_prompt = dedent(f"""\
         Retrieve the latest financial data for "{query}".
         Include current stock price, analyst recommendations, and relevant financial metrics.
+        IMPORTANT: Return numeric values exactly as reported by YFinance. DO NOT perform any scaling or conversion.
         Return the data in bullet points or tables.
         If no data is found, state "No data found."
     """)
@@ -194,7 +196,7 @@ def process_query(query: str, web_search_agent: Agent, finance_agent: Agent, tea
         As of {current_date}, provide a structured financial analysis.
         Remember:
         - Use ONLY the provided data.
-        - Do NOT add or hallucinate additional information.
+        - PRESERVE numeric values exactly as provided (do NOT scale or modify them).
         - If the data is insufficient, state "Insufficient Data."
     """)
     try:
