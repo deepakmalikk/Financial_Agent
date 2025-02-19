@@ -227,12 +227,12 @@ def process_query(query: str, web_agent: Agent, finance_agent: Agent, team_agent
 def setup_streamlit_ui() -> str:
     """Configure Streamlit interface and return model choice"""
     st.set_page_config(
-        page_title="Financial Analyst Pro",
+        page_title="Financial Agent",
         page_icon="📊",
         layout="wide"
     )
     
-    st.title("📊 Financial Analyst Pro")
+    st.title("📊 Financial Agent")
     st.markdown("""
         **Enhanced RAG-powered financial analysis**  
         *Combining real-time market data with AI-powered insights*
