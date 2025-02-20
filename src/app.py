@@ -184,13 +184,7 @@ def setup_streamlit_ui() -> str:
         - **Bitcoin market trends**: Current trends in the cryptocurrency market.
         - **Recent tech sector news**: Latest news impacting the technology sector.
         """)
-        st.divider()
-        st.markdown("""
-            **Data Sources:**  
-            - Yahoo Finance (primary)  
-            - DuckDuckGo Web Search (secondary)  
-            *Note: Prices update every 30 seconds*
-        """)
+        
     return model_choice
 
 def main():
@@ -214,7 +208,7 @@ def main():
                 st.markdown(result)
                 st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             except Exception as e:
-                st.error("Analysis engine unavailable. Please try again later.")
+                st.error("Our Server is Busy. Please try again later.")
                 logger.error(f"Main execution error: {str(e)}", exc_info=True)
 
 if __name__ == "__main__":
