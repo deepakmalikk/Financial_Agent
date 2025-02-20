@@ -232,7 +232,7 @@ def setup_streamlit_ui() -> str:
         layout="wide"
     )
     
-     st.title("📈 Financial Agent")
+    st.title("📈 Financial Agent")
     st.markdown("Enter your query to receive real-time financial analysis and the latest market updates.")
     
     # Sidebar with controls and info
