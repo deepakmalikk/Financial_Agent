@@ -282,7 +282,6 @@ def main():
             
         )
     with col2:
-        st.markdown("##")
         analyze_clicked = st.button("Run Analysis", type="primary")
     
     if analyze_clicked and query:
