@@ -274,15 +274,13 @@ def main():
     model_choice = setup_streamlit_ui()
     
     # Main input area
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        query = st.text_input(
+   
+    query = st.text_input(
             "Enter financial query:",
-            placeholder="e.g., TSLA stock price",
-            
+            placeholder="e.g., TSLA stock price",     
         )
-    with col2:
-        analyze_clicked = st.button("Run Analysis", type="primary")
+   
+    analyze_clicked = st.button("Run Analysis", type="primary")
     
     if analyze_clicked and query:
         with st.spinner("Running enhanced RAG analysis..."):
