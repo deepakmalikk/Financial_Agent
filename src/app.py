@@ -278,8 +278,8 @@ def main():
     with col1:
         query = st.text_input(
             "Enter financial query:",
-            placeholder="e.g., 'SOL stock price' or 'BTC market cap'",
-            help="Supports stocks, crypto, and company names"
+            placeholder="e.g., TSLA stock price",
+            
         )
     with col2:
         st.markdown("##")
