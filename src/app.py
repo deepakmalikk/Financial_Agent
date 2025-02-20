@@ -228,15 +228,12 @@ def setup_streamlit_ui() -> str:
     """Configure Streamlit interface and return model choice"""
     st.set_page_config(
         page_title="Financial Agent",
-        page_icon="📊",
+        page_icon="📈",
         layout="wide"
     )
     
-    st.title("📊 Financial Agent")
-    st.markdown("""
-        **Enhanced RAG-powered financial analysis**  
-        *Combining real-time market data with AI-powered insights*
-    """)
+     st.title("📈 Financial Agent")
+    st.markdown("Enter your query to receive real-time financial analysis and the latest market updates.")
     
     # Sidebar with controls and info
     with st.sidebar:
@@ -250,11 +247,12 @@ def setup_streamlit_ui() -> str:
         st.divider()
         st.subheader("Example Queries")
         st.markdown("""
-            - **SOL stock price and analysis**  
-            - **BTC market data and news**  
-            - **Compare TSLA fundamentals with NVDA**  
-            - **Latest financial news for Amazon**  
-            - **Risk analysis for ETH investments**
+        - **AAPL stock analysis**  
+          Get the latest stock price, analyst recommendations, and market analysis for Apple Inc.
+        - **Bitcoin market trends**  
+          Understand the current trends in the cryptocurrency market.
+        - **Recent tech sector news**  
+          Fetch the latest news impacting the technology sector.
         """)
         
         st.divider()
@@ -266,7 +264,6 @@ def setup_streamlit_ui() -> str:
             
             *Note: Prices update every 30 seconds*
         """)
-    
     return model_choice
 
 def main():
