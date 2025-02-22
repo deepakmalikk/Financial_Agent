@@ -296,13 +296,8 @@ def setup_streamlit_ui() -> str:
         - **Bitcoin trends:** Current trends in the cryptocurrency market.
         - **Recent tech sector news:** Up-to-date news headlines on the tech sector.
         """)
-        st.divider()
-        st.markdown("""
-            **Data Sources:**  
-            - Yahoo Finance (primary)  
-            - DuckDuckGo Web Search (fallback)  
-            *Data updates frequently.
-        """)
+
+
     return model_choice
 
 def main():
